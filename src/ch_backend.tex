@@ -1,0 +1,639 @@
+\chapter{Backend}\label{ch:backend}
+We begin by describing the whole project structure, components for parsing,
+filling the symbol table and code generation.
+
+
+\section{Structure overview}\label{sec:structure-overview}
+UML... (TODO)\\
+Connection between parser and code generator parts is done through derivation tree elements:
+\begin{codeblock}[Derivation tree element]
+    class DTE {
+        Symbol label;
+        DTE father;
+        DTE fson;
+        DTE bro;
+    }
+\end{codeblock}
+\newpage
+In the following graph, we give an example tree of the $C0$-subprogram:
+\begin{verbatim}
+    int x; char y
+\end{verbatim}
+\begin{center}
+    \begin{tikzpicture}
+        [font=\small,sibling distance =1.5cm, grow'=up, edge from parent/.style={draw=black, thick,->},
+        every node/.style={style A}]
+
+        \node (root) {VaDS}
+
+        child {
+            node (VaDS) {VaDS}
+            child {
+                node (VaD2) {VaD}
+                child {
+                    node (Ty1) {Ty}
+                    child { node[blue] (int) {int} }
+                }
+                child {
+                    node (Na1) {Na}
+                    edge from parent[draw=none]
+                    child { node (Le1) {Le} child {node[blue] (x) {x} } }
+                }
+            }
+        }
+        child {
+            node[blue] (sc) {;}
+            edge from parent[draw=none]
+        }
+        child {
+            node (VaD1) {VaD}
+            edge from parent[draw=none]
+            child { node (Ty2) {Ty} child { node[blue] (char) {char}} }
+            child {
+                node (Na2) {Na}
+                edge from parent[draw=none]
+                child { node (Le2) {Le} child { node[blue] (y) {y} }}
+            }
+        };
+
+        \draw[thick, ->] (VaDS)  -- (sc);
+        \draw[thick, ->] (sc)    -- (VaD1);
+        \draw[thick, ->] (Ty1)   -- (Na1);
+        \draw[thick, ->] (Ty2)   -- (Na2);
+    \end{tikzpicture}
+\end{center}
+
+Filling symbol tables and the code generation is done entirely by reading the program
+tree.
+Some of the approaches to shorten the implementation includes flattening the sequence:
+\begin{definition}[fseq]
+    Let $t = XS$ be a sequence subtree, i.e.
+    \[XS \to X \ |\ XS;X\qquad X,XS\in N\]
+    Then the flattened sequence of the subtree is given by
+    \[fseq(t) = \left[X_1,\dots,X_k\right]\]
+    where $k$ is the amount of derived $X$ non-terminals in the tree.
+\end{definition}
+
+\begin{codeblock}[Flattened sequence]
+    input: sequence subtree xs,
+    output: flattened sequence DTE[]
+
+    fseq(DTE xs) -> DTE[] {
+        case xs.label is undefined -> return [];
+        case xs.fson.bro is undefined -> [xs.fson];
+        otherwise -> fseq(xs.fson) + [xs.fson.bro.bro];
+    }
+\end{codeblock}
+First case is a simple null check, following 2 describe
+possible derivations of $xs$:
+\begin{itemize}
+    \item \verb+xs.fson.bro is undefined+: sequence element derives $XS \to X$. \verb+xs.fson+ is the only
+    element in the sequence.
+    \item \verb+otherwise+: $xs$ derives $XS \to XS;X$.
+    Flattened sequence is recursively obtained for \verb+xs.fson+, to which \verb+xs.fson.bro.bro+ is appended
+    (Corresponding to $X$ in the derivation)
+\end{itemize}
+
+When reading name non-terminals (\verb+Na+), one needs to concatenate the labels of the leaves of the subtree, for
+getting the initial string.
+For this purpose, function getting the border word of the subtree is used:
+\begin{definition}[bw]
+    Let $x \in N \cup T$ be a root for the program subtree.
+    Border word of the subtree is given by
+    \[
+        bw(\verb+x+) = \begin{cases}
+                           \verb+x.label.content+&\quad x\in T\\
+                           bw(\verb+x.fson+)\circ \bigcirc_{i=1}^k bw(\verb+x.bro+_i)&\quad x\in N
+        \end{cases}
+    \]
+    where $k$ is the number of siblings of \verb+x.fson+
+\end{definition}
+\begin{codeblock}[Border word]
+    input: derivation tree element x.
+    output: concatenated labels of the leaves, string res.
+
+    bw(DTE x) -> string {
+        case x is terminal -> return x.label.content;
+        otherwise -> {
+            res := bw(x.fson);
+            for all siblings bro_i of x.fson -> {
+                res = res + bw(bro_i);
+            }
+            return res;
+        }
+    }
+\end{codeblock}
+
+The most boilerplate is produced at the stage of filling the symbol tables, especially
+at handling the sequences of pair components, i.e.
+\[ XS \to XS; X\ |\ X\qquad XS,X \in N\qquad A,B\in N\cup T\]
+One clear example of such pattern is variable (or parameter) declaration sequence.
+\[ VaD \to Ty\ Na\]
+Reading the variable declarations occurs at all 3 stages of filling the symbol tables:
+\begin{itemize}
+    \item Type definitions: reading the components of struct type;
+    \item Global variable declarations: consists only of variable declarations;
+    \item Function declarations: parameters and local variables.
+\end{itemize}
+An attempt at simplifying the implementation entails extracting pair sequence reads
+into the following algorithm:
+
+\begin{definition}[extractCompPairs]
+    Let $X \in N$ be a non-terminal deriving a pair
+    \[X \to A\ B\]
+    where $A,B \in N\cup T$.
+    Let $XS \in N$ be a sequence non-terminal deriving
+    \[ XS \to XS;X\ |\ X\]
+    then extraction of all the component pairs yields the list of tuples of the form
+    \[(bw(\verb+A+), bw(\verb+B+)) \]
+    We have
+    \[ \verb+extrCompPairs(XS)+ = \Bigg[ \Big( bw(fs_1.fson),bw(fs_1.fson.bro) \Big),\dots,\Big( bw(fs_k.fson),bw(fs_k.fson.bro) \Big) \Bigg]\]
+    where for $i\in[1:k],\ fs_i \in fseq(xs),\ k=|fseq(xs)|$
+\end{definition}
+\begin{codeblock}[Extracting component pairs]
+    input: DTE xs - sequence element deriving component pairs parent x
+    output: string[][] - array of pair border word tuples
+
+    extrCompPairs(DTE xs) -> string[][] {
+        fs := fseq(xs)
+        result := []
+        for all elements fs_i in fs -> {
+            case fs_i is separator token (";", ",") -> fs_i = fs_i.bro;
+
+            A := bw(fs_i.fson)
+            B := bw(fs_i.fson.bro)
+
+            result.add([A,B])
+        }
+        return result
+    }
+\end{codeblock}
+\newpage
+Now we show the whole compilation process
+\begin{center}
+    \begin{tikzpicture}
+        [font=\small,sibling distance =1.5cm, level distance=3cm, grow'=right, edge from parent/.style={draw=black, thick,->},
+        level 4/.style={level distance=3cm},
+        level 5/.style={grow'=down, level distance=1.5cm}]
+
+
+        \node[style A] (root) {C0 code}
+
+        child {
+            node[style B] (lp) {Lexer + Parser}
+            child {
+                node[style A] (pt) {Program tree}
+                child {
+                    node[style A] (tyds) {TyDS}
+                    child {
+                        node[style B] (tt) {TypeTable}
+                    }
+                }
+                child {
+                    node[style A] (vads) {VaDS}
+                    child {
+                        node[style B] (mt) {MemoryTable}
+                    }
+                }
+                child {
+                    node[style A] (fuds) {FuDS}
+                    child {
+                        node[style B] (ft) {FunctionTable}
+                        child {
+                            node[style A] (body) {\$main.body}
+                            child {
+                                node[style B] (cg) {CodeGenerator}
+                                child { node[style C] (ai) {assembly instructions} }
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+    \end{tikzpicture}
+\end{center}
+\newpage
+Filling the type table
+\begin{center}
+    \begin{tikzpicture}
+        [font=\small,sibling distance =1.5cm, level distance=3cm, grow'=right, edge from parent/.style={draw=black, thick,->},
+        level 3/.style={level distance=1.2cm},
+        level 5/.style={grow'=down, level distance=1.5cm}]
+
+        \node[style B]  at (7.2,-2) (readTyD) {readTyD};
+        \node[style A, minimum width=4cm, minimum height=1cm] at (7.2, 0) (box) {};
+        \node[style A] (tyds) {TyDS}
+        child {
+            node[style B] (fseq) {\ fseq\ }
+            child {
+                node[style A] (tyd1) {TyD1} edge from parent[draw=none]
+                child {
+                    node[draw=none] (dots) {\dots} edge from parent[draw=none]
+                    child {
+                        node[style A] (tydn) {TyDn} edge from parent[draw=none]
+                    }
+                }
+            }
+        };
+
+        \draw[thick, ->] (box)  -- (readTyD);
+        \draw[thick, ->] (fseq)  -- (box);
+    \end{tikzpicture}
+\end{center}
+
+\begin{codeblock}
+    input: DTE tyds - tree element of type TyDS,
+    output: none
+    effect: fills the table with new types
+
+    fillTypeTable(DTE tyds) -> void {
+        case tyds is not <TyDS> -> error;
+        for all element tyD in fseq(tyds) -> readTyD(tyD);
+    }
+\end{codeblock}
+\newpage
+reading type definition
+\begin{center}
+    \begin{tikzpicture}
+        [font=\small, level distance=2cm, grow'=up, edge from parent/.style={draw=black, thick,->},
+        level 2/.style={grow'=right}]
+
+        \node[style A] (tyd) {TyD}
+        child {
+            node[style A] (td) {typedef}
+            child {
+                node[style A] (te) {TE}
+                child { node[style A] (na) {Na} }
+            }
+        };
+
+    \end{tikzpicture}
+\end{center}
+
+\begin{center}
+    \begin{tikzpicture}
+        [font=\small, level distance=2cm, grow'=right, edge from parent/.style={draw=black, thick,->},
+        level 2/.style={grow'=right, level distance=1.1cm}]
+
+        \node[style B]  at (8,1.5) (createArray) {createArray};
+        \node[style B]  at (8,0) (createPointer) {createPointer};
+        \node[style B]  at (8,-1.5) (createStruct) {createStruct};
+
+        \node[style A] (te) {TE}
+        child {
+            node[style A] (ty1) {Ty} edge from parent[draw=none]
+            child {
+                node[style A] (lb) {[}
+                child {
+                    node[style A] (dis) {DiS}
+                    child {
+                        node[style A] (rb) {]}
+                    }
+                }
+            }
+        }
+        child {
+            node[style A] (ty2) {Ty} edge from parent[draw=none]
+            child { node[style A] (ptr) {$*$} }
+        }
+        child {
+            node[style A] (struct) {struct} edge from parent[draw=none]
+            child {
+                node[style A] (lcb) {\{}
+                child {
+                    node[style A] (vads) {VaDS}
+                    child { node[style A] (rcb) {\}} }
+                }
+            }
+        };
+
+        \draw[thick, ->] (rb)  -- (createArray);
+        \draw[thick, ->] (ptr)  -- (createPointer);
+        \draw[thick, ->] (rcb)  -- (createStruct);
+
+
+        \draw[dotted,thick, ->] (te)  -- (ty1);
+        \draw[dotted,thick, ->] (te)  -- (ty2);
+        \draw[dotted,thick, ->] (te)  -- (struct);
+    \end{tikzpicture}
+\end{center}
+
+\newpage
+Adding array type
+\begin{center}
+    \begin{tikzpicture}
+        [font=\small, level distance=3.1cm, grow'=right, edge from parent/.style={draw=black, thick,->},
+        level 2/.style={grow'=right, level distance=1.1cm}]
+
+        \node[style B] at (2, -8.5) (addToTT) {addToTypeTable};
+        \node[style A] at (2, -6) (done) {
+            \begin{minipage}{5cm}
+                \begin{verbatim}arrayTargetTy := tt(Ty);
+arraySize := parse(dis);
+name := bw(na)
+                \end{verbatim}
+            \end{minipage}
+        };
+        \node[style B] at (1,-4) (valid) {checkValidNumber};
+        \node[style B] at (0, -2) (defined) {checkDefined}
+        child { node[style D] (err) {Error} edge from parent  [->] node [above] {\tiny false}};
+        \node[style A] (ty1) {Ty}
+        child {
+            node[style A] (lb) {[}
+            child {
+                node[style A] (dis) {DiS}
+                child {
+                    node[style A] (rb) {]}
+                }
+            }
+        };
+        \draw[thick, ->] (ty1) -- (defined);
+        \draw[thick, ->] (defined) -- node[midway, left] {\tiny true} (valid);
+        \draw[thick, ->] (valid) -- node[midway, right] {\tiny false} (err);
+        \draw[thick, ->] (dis) .. controls (4,-4) .. node[midway, right] {dis} (valid);
+        \draw[thick, ->] (valid) -- node[right] {\tiny true} (done);
+        \draw[thick, ->] (done) -- node[right] {\tiny result} (addToTT);
+    \end{tikzpicture}
+\end{center}
+\newpage
+Adding pointer type
+\begin{center}
+    \begin{tikzpicture}
+        [font=\small, level distance=2.1cm, grow'=down, edge from parent/.style={draw=black, thick,->},]
+        \node[style A] (done) {
+            \begin{minipage}{5.5cm}
+                \begin{verbatim}ptrTargetTy = tt(Ty) || NULL;
+name := bw(na);
+                \end{verbatim}
+            \end{minipage}
+        }
+        child { node[style B] {addToTypeTable}};
+    \end{tikzpicture}
+\end{center}
+
+Adding Struct type
+\begin{center}
+    \begin{tikzpicture}
+        [font=\small, level distance=1.5cm, grow'=right, edge from parent/.style={draw=black, thick,->},
+        level 2/.style={grow'=right, level distance=1.5cm}]
+
+        \node[style B] at (3,-9) (addToTT) {addToTypeTable};
+        \node[style A] at (3,-7) (code) {
+            \begin{minipage}{8cm}
+                \begin{verbatim}structComps := mapping(VaDi.Na, tt(VaDi));
+name := bw(na)
+                \end{verbatim}
+            \end{minipage}
+        };
+        \node[style D] at (7, -5) (err) {Error};
+        \node[style B] at (3, -5) (check) {\verb+checkDefinedAndNameUnique+};
+        \node[style A, minimum width=4.5cm, minimum height=1cm] at (3, -3) (box) {};
+        \node[style A] at (1.5,-3) (vad1) {VaD1}
+        child {
+            node[draw=none] (dots) {$\dots$} edge from parent[draw=none]
+            child { node[style A] (vadn) {VaDn} edge from parent[draw=none]}
+        };
+        \node[style B] at (3,-1.5) (fseq) {fseq};
+        \node[style A] (struct) {struct}
+        child {
+            node[style A] (lcb) {\{}
+            child {
+                node[style A] (vads) {VaDS}
+                child { node[style A] (rcb) {\}} }
+            }
+        };
+
+        \draw[thick, ->] (vads) -- (fseq);
+        \draw[thick, ->] (fseq) -- (box);
+        \draw[thick, ->] (box) -- node[midway, right] {for each} (check);
+        \draw[thick, ->] (check) -- node[midway, above] {false} (err);
+        \draw[thick, ->] (check) -- node[midway, right] {all true} (code);
+        \draw[thick, ->] (code) -- (addToTT);
+    \end{tikzpicture}
+\end{center}
+\newpage
+Filling memory table
+
+Since variable scopes are decided to be stored inside a struct, we treat global
+variable declaration sequence \textbf{almost} as a type definition of form:
+\begin{codeblock}[Global variables]
+    typedef struct { VaDS } $gm;
+\end{codeblock}
+Single difference from a regular type definition is, that the newly created type
+is not added to the type table, otherwise the following code would be a valid c0 program:
+\begin{codeblock}
+int a;
+bool b;
+char c;
+int main() {
+    $gm k;
+    ...
+    k.b = true;
+    return k.a
+}
+\end{codeblock}
+\newpage
+Filling the function table
+\begin{center}
+\begin{tikzpicture}
+[font=\small,sibling distance =1.5cm, level distance=3cm, grow'=right, edge from parent/.style={draw=black, thick,->},
+level 3/.style={level distance=1.2cm},
+level 5/.style={grow'=down, level distance=1.5cm}]
+
+\node[style B]  at (7.2,-2) (readTyD) {readFuD};
+\node[style A, minimum width=4cm, minimum height=1cm] at (7.2, 0) (box) {};
+\node[style A] (tyds) {FuDS}
+child {
+node[style B] (fseq) {\ fseq\ }
+child {
+node[style A] (tyd1) {FuD1} edge from parent[draw=none]
+child {
+node[draw=none] (dots) {\dots} edge from parent[draw=none]
+child {
+node[style A] (tydn) {FuDn} edge from parent[draw=none]
+}
+}
+}
+};
+
+\draw[thick, ->] (box)  -- (readTyD);
+\draw[thick, ->] (fseq)  -- (box);
+\end{tikzpicture}
+\end{center}
+
+Reading FuD
+\begin{center}
+\begin{tikzpicture}
+[font=\small,sibling distance =1.5cm, level distance=1.5cm, grow'=right, edge from parent/.style={draw=black, thick,->}]
+
+\node[style A] at (12, -3) (addbody) {\verb+setBody+};
+\node[style A] at (8.02, -6) (struct) {
+\begin{minipage}{5cm}
+\begin{verbatim}
+// same as in $gm
+create memstruct for [1,n+m]
+memStruct := $bw(na)
+\end{verbatim}
+\end{minipage}
+};
+\node[style A, minimum width=6cm, minimum height=1cm] at (8.02, -4.5) (box) {};
+\node[style A] at (5.7,-4.5) (vad1) {$VaD_1$};
+\node[draw=none] at (6.8, -4.5) (dots1) {$\dots$};
+\node[style A] at (7.9,-4.5) (vadn) {$VaD_n$};
+\node[draw=none] at (9, -4.5) (dots2) {$\dots$};
+\node[style A] at (10.1,-4.5) (vadnm) {$VaD_{n+m}$};
+\node[style B] at (7, -3) (fseq) {\verb+fseq+};
+\node[style A] at (3, -7.5) (nameCode) {
+\begin{minipage}{2.5cm}
+\begin{verbatim}
+name := bw(na);
+\end{verbatim}
+\end{minipage}
+};
+\node[style B] at (3, -6) (functionExists) {\verb+functionExists+};
+\node[style A] at (0, -4.5) (checkCode) {
+\begin{minipage}{4cm}
+\begin{verbatim}
+returnType = tt(bw(ty))
+\end{verbatim}
+\end{minipage}
+};
+\node[style D] at (3, -3) (err)    {Error};
+\node[style B] at (0, -3) (check) {\verb+checkDefined+};
+\node[style A] (fud) {\verb+FuD+};
+\node[style A] at (0, -1) (ty) {Ty}
+child {
+node[style A] (na) {Na}
+child {
+node[style A] (lp) {(}
+child {
+node[style A] (pads) {PaDS}
+child {
+node[style A] (rp) {)}
+child {
+node[style A] (lcb) {\{}
+child {
+node[style A] (vads) {VaDS}
+child {
+node[style A] (sc) {;}
+child {
+node[style A] (body) {body}
+child{
+node[style A] (rcb) {\}}
+}
+}
+}
+}
+}
+}
+}
+}
+};
+\draw[thick, ->] (fud) -- (ty);
+\draw[thick, ->] (ty) -- node[midway, left] {$tt(bw(ty))$} (check);
+\draw[thick, ->] (check) -- node[midway, above] {false} (err);
+\draw[thick, ->] (check) -- node[midway, right] {true} (checkCode);
+\draw[thick, ->] (checkCode) -- (functionExists);
+\draw[thick, ->] (na) .. controls (5, -3) .. node[midway,right] {$bw(na)$} (functionExists);
+\draw[thick, ->] (functionExists) -- node[midway, right] {true} (err);
+\draw[thick, ->] (functionExists) -- node[midway, left] {false} (nameCode);
+\draw[thick, ->] (pads) -- (fseq);
+\draw[thick, ->] (vads) -- (fseq);
+\draw[thick, ->] (fseq) -- (box);
+\draw[thick, ->] (box) -- (struct);
+\draw[thick, ->] (body) -- (addbody);
+\end{tikzpicture}
+\end{center}
+\newpage
+Helper components\\
+Pebble game naive approach:\\
+simple pointer of the first free register, occuping register increments the pointer,
+freeing - decrements.\\
+This approach does not work, failing example is inline assembly portions
+\begin{codeblock}[Inline assembly]
+gpr(j) = e { J };
+e = gpr(j) { J };
+\end{codeblock}
+Workaround is to use simple boolean array indicating occupied registers,\\
+getting the register becomes an operation of getting first one and setting zero.
+\begin{codeblock}[Pebble game]
+registers = new boolean[32];
+...
+int reg = f1(registers);
+registers[reg - 1] = false; // since reg is occupied
+...
+registers[reg - 1] = true; // freeing the reg
+\end{codeblock}
+It is important to keep track of the current function (for variable binding). We define a record for this purpose,
+along with configuration class, which will store the stack of the calls and logic for the pebble game.
+\begin{codeblock}[Helper components]
+class FunctionCall {
+    Fun function;
+    int rd;
+    int displacement; // from bpt
+}
+
+class Configuration {
+    boolean[] registers; // for pebble game
+    Stack<FunctionCall> stack;
+
+    Fun currentFunction () { ... }
+    void pop() { ... }
+    int getRegister() { ... }
+    void freeRegister(int reg) { ... }
+
+}
+\end{codeblock}
+\newpage
+Code generation part itself includes only adding the handler functions for the respective
+tree patterns. For simplicity, these are grouped into classes by context and purpose.
+Having almost all methods static, these classes encapsulate nothing except generated instruction list.
+We have
+\begin{itemize}
+\item \verb+ConstEvaluator+: generates instructions for \verb+<C>,<BC>,<CC>+;
+\item \verb+ExpressionEvaluator+: instructions for \verb+<E>,<BE>+;
+\item \verb+IdEvaluator+: binds variables, \verb+<id>+;
+\item \verb+MemoryHelper+: generates instructions for increasing/decreasing stack and
+heap pointers;
+\item \verb+CodeGenerator+: gets passed the initial program, handles generated instructions,
+delegates tree patterns to other evaluators, handles conditionals, loops and initialises function calls.
+\end{itemize}
+
+\begin{codeblock}[Compiler backend]
+input: Fun main function
+output: Instruction[] generated assembly instructions
+
+generateCode(Fun main) -> Instruction[] {
+    FunctionTable.checkMainDefined(main);
+    createFunctionCall(main);
+
+    statements := fseq(main.getSts());
+    for all element st in statements -> {
+        evaluateSt(st);
+        Config.freeAllRegisters();
+    }
+    return CodeGenerator.instructions;
+}
+\end{codeblock}
+\newpage
+\begin{center}
+    \begin{tikzpicture}
+    [font=\small,sibling distance =1.5cm, level distance=1.5cm, grow'=right, edge from parent/.style={draw=black, thick,->}]
+
+    \node [style A] (st) {St}
+    child {
+        node [style A] (id) {Id}
+        child {
+            node [style A] (eq) {=}
+            child { node[style A] (dots) {$\dots$}
+                child { node[style B] (assignment) {generateAssignment}}
+            }
+        }
+    }
+    child { node [style A] (while) {while} }
+    child { node [style A] (if) {if} };
+
+    \end{tikzpicture}
+\end{center}
+
