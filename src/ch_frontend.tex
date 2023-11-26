@@ -1,2 +1,269 @@
-\chapter{Lexer \& Parser}\label{ch:frontend}
-Will be updated...
+\chapter{Lexer and Parser}\label{ch:Lexer and Parser}
+
+\newpage
+
+
+% Structure Implementation for Context-Free Grammars
+\section{Structure Implementation for Context-Free Grammars}\label{sec:Structure Implementation for Context-Free Grammars}
+
+Before diving into language ambiguity testing and source code parsing, we need to properly read and accurately store the input grammar. A precise specification and understanding of the source grammar are fundamental for our parser’s architecture.\\
+
+% Context-Free Grammar Definition
+\begin{definition}[1.0]
+    A context-free grammar is a 4-tuple \((N, T, P, S)\), where
+    \begin{enumerate}
+        \item \(N\) is a finite set called the nonterminal symbols,
+        \item \(T\) is a finite set, disjoint from N, called the terminal symbols,
+        \item \(P\) is a finite set of production rules, with each rule being a nonterminal deriving a string of terminal and/or nonterminal symbols,
+        \item \(S \in N\) is the start nonterminal symbol.
+    \end{enumerate}
+\end{definition}
+\setlength{\parindent}{0pt}
+
+Given this definition of a context-free grammar, our implementation will replicate its structure to properly follow the mathematical theory used in this thesis.\\
+
+For proper replication, we create these three classes:
+\begin{enumerate}
+    \item Class \(\boldsymbol{Symbol}\): \textit{Both terminal and nonterminal symbols are atomic elements of CFGs. Thus, we might want to create a class that will encapsulate these elements properly.}
+    \item Class \(\boldsymbol{Production}\): \textit{In CFGs, production rules dictate how a nonterminal symbol can be replaced by a sequence of terminal and/or nonterminal symbols. Therefore, we need a class that will encapsulate the concept of a production rule.}
+    \item Class \(\boldsymbol{Grammar}\): \textit{This class represents the entire CFG. \(\boldsymbol{Grammar}\) should replicate the mathematical definition of CFGs.}
+\end{enumerate}
+
+For a convenient implementation design, we group these three classes under a package named \(\boldsymbol{grammar}\).\\
+
+Now let’s explore each of these classes in detail.
+
+% Symbol Class
+\subsection*{\(\boldsymbol{Symbol}\) Class}
+
+The \(\boldsymbol{Symbol}\) class encapsulates the concept of terminal and nonterminal symbols. In CFGs, terminal and nonterminal symbols are strings. The input grammar explicitly determines which of the symbols are terminal and which are nonterminal.\\
+Thus, to properly encapsulate the concept of a symbol of a CFG, we need an attribute for the string content and another attribute for the type of the symbol (terminal / nonterminal).\\
+
+\textbf{Attributes:}
+\begin{itemize}
+    \item \(\boldsymbol{content}\): \textit{A string representing the actual content of the symbol.}
+    \item \(\boldsymbol{type}\): \textit{An enum indicating whether the symbol is a terminal or nonterminal.}
+\end{itemize}
+
+We also present some basic functions to further simplify and shorten the overall implementation of the parser.\\
+
+\textbf{Methods:}
+\begin{itemize}
+    \item \(\boldsymbol{constructor}\): \textit{Initializes a \(\boldsymbol{Symbol}\) object with the specified content and type.}
+    \item \(\boldsymbol{isTerminal}\): \textit{Returns true if the symbol is terminal, returns false otherwise.}
+    \item \(\boldsymbol{length}\): \textit{Returns the length of the content string.}
+    \item \(\boldsymbol{equals}\): \textit{Determines whether two \(\boldsymbol{Symbol}\) objects are equal in both content and type.}
+    \item \(\boldsymbol{hashCode}\): \textit{Returns a hash code of the symbol.}
+\end{itemize}
+
+\begin{codeblock}[Symbol Class]
+    class Symbol {
+        enum SymbolType {
+            Terminal, Nonterminal
+        }
+        String content;
+        SymbolType type;
+
+        Symbol(String content, SymbolType type) {}
+        boolean isTerminal() {}
+        int length() {}
+        boolean equals(Object obj) {}
+        int hashCode() {}
+    }
+\end{codeblock}
+
+\vspace{10pt}
+
+% Production Class
+\subsection*{\(\boldsymbol{Production}\) Class}
+
+The \(\boldsymbol{Production}\) class encapsulates the concept of a production rule of a CFG. A representation of a production rule has the form:
+
+\begin{verbatim}
+left (nonterminal) → right (sequence of terminals and/or nonterminals)
+\end{verbatim}
+
+meaning – the right-hand side sequence can be derived from the left-hand side nonterminal. Therefore, to properly encapsulate a production rule we need two attributes: a left-hand side nonterminal and a right-hand side sequence of symbols.\\
+
+
+\textbf{Attributes:}
+\begin{itemize}
+    \item \(\boldsymbol{left}\): \textit{A nonterminal \(\boldsymbol{Symbol}\) representing the left-hand side of the production.}
+    \item \(\boldsymbol{right}\): \textit{An Array List of \(\boldsymbol{Symbol}\) objects representing the sequence of terminals and/or nonterminals on the right side of the production.}
+\end{itemize}
+
+\textbf{Methods:}
+\begin{itemize}
+    \item \(\boldsymbol{constructor}\): \textit{Initializes a \(\boldsymbol{Production}\) object with the specified left and right attributes.}
+    \item \(\boldsymbol{equals}\): \textit{Determines if two \(\boldsymbol{Production}\) objects are equal in both left and right.}
+    \item \(\boldsymbol{hashCode}\): \textit{Returns a hash code of the symbol.}
+\end{itemize}
+
+\begin{codeblock}[Production Class]
+    class Production {
+        Symbol left;
+        List<Symbol> right;
+
+        Production(Symbol left, List<Symbol> right) {}
+        boolean equals(Object obj) {}
+        int hashCode() {}
+    }
+\end{codeblock}
+
+\vspace{10pt}
+
+% Grammar Class
+\subsection*{\(\boldsymbol{Grammar}\) Class}
+
+The \(\boldsymbol{Grammar}\) class represents an entire context-free grammar. Therefore, it should properly encompass:
+
+\begin{enumerate}
+    \item The start nonterminal.
+    \item The terminal symbols.
+    \item The nonterminal symbols.
+    \item The production rules.
+\end{enumerate}
+
+That’s why we create these 4 attributes for the \(\boldsymbol{Grammar}\) class:\\
+
+\textbf{Attributes:}
+\begin{itemize}
+    \item \(\boldsymbol{start}\): \textit{A nonterminal \(\boldsymbol{Symbol}\) object representing the start symbol of the grammar. By convention, it’s the left side of the first production rule of the CFG.}
+    \item \(\boldsymbol{terminals}\): \textit{A set of \(\boldsymbol{Symbol}\) objects representing the terminal symbols of the grammar.}
+    \item \(\boldsymbol{nonterminals}\): \textit{A set of \(\boldsymbol{Symbol}\) objects representing the nonterminal symbols of the grammar.}
+    \item \(\boldsymbol{productions}\): \textit{A list of \(\boldsymbol{Production}\) objects representing the production rules of the grammar.}
+\end{itemize}
+
+\textbf{Methods:}
+\begin{itemize}
+    \item \(\boldsymbol{constructor}\): \textit{Initializes a \(\boldsymbol{Grammar}\) object based on the provided file path parameters:}
+    \begin{verbatim} Grammar.txt, Terminals.txt.\end{verbatim}
+    \textit{In order to simplify the implementation of the \(\boldsymbol{constructor}\), in the next section we will introduce other methods inside the \(\boldsymbol{Grammar}\) class.}
+\end{itemize}
+
+\begin{codeblock}[Grammar Class]
+    class Grammar {
+        Symbol start;
+        Set<Symbol> terminals;
+        Set<Symbol> nonterminals;
+        List<Production> productions;
+
+        Grammar(String grammarFilePath, String terminalsFilePath) {}
+        ...
+    }
+\end{codeblock}
+
+\newpage
+
+
+% Lexical Analysis and Tokenization
+\section{Lexical Analysis and Tokenization}\label{sec:Lexical Analysis and Tokenization}
+
+The preceding section of the thesis introduced an efficient structure for storing a CFG. This section explores the methods to accurately read and tokenize the input grammar within this structure.\\
+
+We provide the input grammar by passing two file paths as parameters to the \(\boldsymbol{Grammar.constructor}\):
+\begin{itemize}
+    \item  \texttt{Grammar.txt}: \textit{Contains the entire CFG (C0 in our case. Exactly the same representation as in Table 1.0).}
+    \item  \texttt{Terminals.txt}: \textit{Lists all terminal symbols. Notably, unlike nonterminal symbols, not all terminal symbols can be identified from \texttt{Grammar.txt} alone, Therefore, it’s essential to explicitly define all terminal symbols.}
+\end{itemize}
+
+The provided \texttt{.txt} files are essentially lines of strings lacking any inherent meaning. Tokenization transforms these lines of strings into sequences of \(\boldsymbol{Symbol}\) objects. We will demonstrate how to read from these \texttt{.txt} files, tokenize the content, and store it appropriately.
+
+% readTerminals
+\subsection*{\(\boldsymbol{Grammar.readTerminals}\)}
+
+Parameters: \textit{String \(\boldsymbol{terminalFilePath}\).}
+
+Throws: \textit{\(\boldsymbol{FileNotFoundException}\) if the \(\boldsymbol{terminalFilePath}\) is invalid.}
+
+Returns: \textit{\(\boldsymbol{void}\).}\\
+
+\textbf{Specification:} \textit{Utilizes \(\boldsymbol{terminalFilePath}\) to read \texttt{Terminals.txt} and stores all terminal symbols in \(\boldsymbol{Grammar.terminals}\).}\\
+
+Each line in \texttt{Terminals.txt} represents a terminal symbol of the input grammar. The function reads the file line-by-line, removes all whitespace to prevent unexpected errors, creates the corresponding \(\boldsymbol{Symbol}\) objects, and stores them in \(\boldsymbol{Grammar.terminals}\).
+
+Additionally, the function adds \(\boldsymbol{Symbol}\) objects for these characters \textit{" ", "\texttt{\textbackslash t}", "\texttt{\textbackslash n}"}.
+
+\vspace{30pt}
+
+% readNonerminals
+\subsection*{\(\boldsymbol{Grammar.readNonterminals}\)}
+
+Parameters: \textit{String \(\boldsymbol{grammarFilePath}\).}
+
+Throws: \textit{\(\boldsymbol{FileNotFoundException}\) if the \(\boldsymbol{grammarFilePath}\) is invalid.}
+
+Returns: \textit{\(\boldsymbol{void}\).}\\
+
+\textbf{Specification:} \textit{Utilizes \(\boldsymbol{grammarFilePath}\) to read \texttt{Grammar.txt} and stores all nonterminal symbols in \(\boldsymbol{Grammar.nonterminals}\).}\\
+
+Each line in \texttt{Grammar.txt} corresponds to a production rule of the input grammar. As by convention at some point, every nonterminal symbol is referenced on the left-hand side of a production rule. Recognizing all nonterminal symbols requires extracting the left-hand side symbols from all production rules and storing them in the set \(\boldsymbol{Grammar.nonterminals}\).
+
+To do this, the method reads the file line-by-line, removes all whitespace to prevent errors, splits each line at the \texttt{→} symbol, crates \(\boldsymbol{Symbol}\) object from the left-hand side of the \texttt{→}, and stores it in \(\boldsymbol{Grammar.nonterminals}\).
+
+\vspace{30pt}
+
+% readProductions
+\subsection*{\(\boldsymbol{Grammar.readProductions}\)}
+
+Parameters: \textit{String \(\boldsymbol{grammarFilePath}\).}
+
+Throws: \textit{\(\boldsymbol{FileNotFoundException}\) if the \(\boldsymbol{grammarFilePath}\) is invalid.}
+
+Returns: \textit{\(\boldsymbol{void}\).}\\
+
+\textbf{Specification:} \textit{Utilizes \(\boldsymbol{grammarFilePath}\) to read \texttt{Grammar.txt} and save all production rules in \(\boldsymbol{Grammar.productions}\).}\\
+
+As mentioned earlier, each line in \texttt{Grammar.txt} represents a production rule of the grammar. Sometimes, the symbol \texttt{|} is used to represent multiple productions on the same line when the left-hand side nonterminal is identical for these productions.\\
+
+Example: \texttt{S → a | b}
+
+For proper implementation, we should decompose such representations and store each production separately.\\
+
+Instead of,  \texttt{S → a | b}, we should store,  \texttt{S → a; S → b}, separately.\\
+
+To do so, we split each string line by  \texttt{→}. Then we create a variable, \(left\), which is a \(\boldsymbol{Symbol}\) object obtained from the left-hand side string. We save the right-hand side string as  \(rightString\). To decompose  \(rightString\), we split it by \texttt{|} and store the resulting parts in a string array called \(rightParts\). Each element in \(rightParts\) is a string representing a sequence of symbols derivable from the \(left\) nonterminal. The next essential step is to tokenize the elements of \(rightParts\).\\
+
+A right-hand side string of the production rule consists of a sequence of symbols, and our task is to correctly identify each one. We introduce the \(\boldsymbol{stringIntoSymbols}\) method to tokenize these strings. The methods’s complete specification is provided below.\\
+
+We iterate through the \(rightParts\) array. Using \(\boldsymbol{stringIntoSymbols}\), we store the tokenization result – a list of \(\boldsymbol{Symbol}\) objects in a local variable \(right\). During this process, given that we have both \(left\) and \(right\), we form a ‘\(\boldsymbol{Production}\) object and save it in \(\boldsymbol{Grammar.productions}\). This approach allows us to store each production separately, breaking down the initial representation of the production rule.
+
+\vspace{30pt}
+
+% stringIntoSymbols
+\subsection*{Static \(\boldsymbol{stringIntoSymbols}\)}
+
+Parameters: \textit{String \(\boldsymbol{str}\), Set\texttt{<}Symbol\texttt{>} \(\boldsymbol{terminals}\), Set\texttt{<}Symbol\texttt{>} \(\boldsymbol{nonterminals}\).}
+
+Returns: \textit{ List\texttt{<}Symbol\texttt{>} \(\boldsymbol{stringIntoSymbolsArray}\).}\\
+
+\textbf{Specification:} \textit{The function takes in a string of symbols and sets of both terminal and nonterminal symbols. It breaks down the provided string into individual symbols and returns a list of corresponding \(\boldsymbol{Symbol}\) objects. To accurately identify every symbol in the string, we must be aware of the symbols present in the grammar, hence the need for terminal and nonterminal sets as parameters.}\\
+
+The tokenization process proceeds as follows:
+
+We start from the beginning of the string \(\boldsymbol{str}\) and recognize the longest symbol available one by one.\\
+
+For instance, tokenizing the string \(\boldsymbol{str}\) = \texttt{"int main()\{return 0\}\( \dashv \)"} results in the following steps:
+
+\begin{enumerate}
+    \item \(\boldsymbol{resultArray}\) = \texttt{[]}; \hfill \(\boldsymbol{str}\) = \texttt{"int main()\{return 0\}\( \dashv \)"}
+    \item \(\boldsymbol{resultArray}\) = \texttt{[int]}; \hfill \(\boldsymbol{str}\) = \texttt{" main()\{return 0\}\( \dashv \)"}
+    \item \(\boldsymbol{resultArray}\) = \texttt{[int,  ,]}; \hfill \(\boldsymbol{str}\) = \texttt{"main()\{return 0\}\( \dashv \)"}
+    \item \(\boldsymbol{resultArray}\) = \texttt{[int,  , main]}; \hfill \(\boldsymbol{str}\) = \texttt{"()\{return 0\}\( \dashv \)"}
+    \item \(\boldsymbol{resultArray}\) = \texttt{[int,  , main, (]}; \hfill \(\boldsymbol{str}\) = \texttt{")\{return 0\}\( \dashv \)"}
+    \item \(\boldsymbol{resultArray}\) = \texttt{[int,  , main, (, )]}; \hfill \(\boldsymbol{str}\) = \texttt{"\{return 0\}\( \dashv \)"}
+    \item \(\boldsymbol{resultArray}\) = \texttt{[int,  , main, (, ), \{]}; \hfill \(\boldsymbol{str}\) = \texttt{"return 0\}\( \dashv \)"}
+    \item \(\boldsymbol{resultArray}\) = \texttt{[int,  , main, (, ), \{, return]}; \hfill \(\boldsymbol{str}\) = \texttt{" 0\}\( \dashv \)"}
+    \item \(\boldsymbol{resultArray}\) = \texttt{[int,  , main, (, ), \{, return,  ]}; \hfill \(\boldsymbol{str}\) = \texttt{"0\}\( \dashv \)"}
+    \item \(\boldsymbol{resultArray}\) = \texttt{[int,  , main, (, ), \{, return,  , 0]}; \hfill \(\boldsymbol{str}\) = \texttt{"\}\( \dashv \)"}
+    \item \(\boldsymbol{resultArray}\) = \texttt{[int,  , main, (, ), \{, return,  , 0, \}]}; \hfill \(\boldsymbol{str}\) = \texttt{"\( \dashv \)"}
+    \item \(\boldsymbol{resultArray}\) = \texttt{[int,  , main, (, ), \{, return,  , 0, \}, \( \dashv \)]}; \hfill \(\boldsymbol{str}\) = \texttt{""}
+\end{enumerate}
+
+The Symbol \( \dashv \) represents the \(\boldsymbol{endmark}\) symbol, introduced in Michael Sipser's book.
+
+\newpage
+
+
+% Lexical Analysis and Tokenization
+\section{Structure Implementation of DK1 Automaton}\label{sec:Structure Implementation of DK1 Automaton}
