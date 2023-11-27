@@ -266,7 +266,7 @@ The Symbol \( \dashv \) represents the \(\boldsymbol{endmark}\) symbol, introduc
 
 
 % Structure Implementation of DK1 Automaton
-\section{Structure Implementation of \(\boldsymbol{DK_{1}}\) Automaton}\label{sec:Structure Implementation of \(\boldsymbol{DK_{1}}\) Automaton}
+\section{Structure Implementation of \(\boldsymbol{DK_{1}}\) Automaton}\label{sec:Structure Implementation of DK1 Automaton}
 
 Since we already possess the input grammar, we can now test whether that grammar is LR(1) or not. The book "Introduction to the Theory of Computation" suggests constructing a \( DK_{1} \) automaton for this purpose. Before constructing the \( DK_{1} \) automaton for a specific CFG, we must implement its general structure as mathematically outlined in the book. This section will discuss the \( DK_{1} \) automaton’s structure implementation, while the next section will cover its construction process for a specific language, in our case the C0 language.
 
@@ -434,4 +434,190 @@ All the methods mentioned below are quite complex from the implementation point 
 
 
 % DK1 Automaton Builder for a CFG
-\section{\(\boldsymbol{DK_{1}}\) Automaton Builder for a CFG}\label{sec:\(\boldsymbol{DK_{1}}\) Automaton Builder for a CFG}
+\section{\(\boldsymbol{DK_{1}}\) Automaton Builder for a CFG}\label{sec:DK1 Automaton Builder for a CFG}
+
+We have built a solid framework to construct the \(DK_{1}\) automaton of a particular CFG. \(DK_{1}\) is a deterministic finite automaton that will help us to test the input grammar and then parse the source code. The implementation will closely follow the theory developed in the "Introduction to the Theory of Computation". Note that the implementation process is intricate. For instance, while the example of the \(DK_{1}\) automaton for a basic grammar in Table 2.0 has only 9 states with a few items, the \(DK_{1}\) of the C0 grammar comprises 3264 states with a vast number of items. Even a small error in the implementation can drastically alter the automaton.
+
+\vspace{10pt}
+
+% DK1.constructor
+\subsection*{\(\boldsymbol{DK1.constructor}\)}
+
+Parameters: \textit{Grammar \(\boldsymbol{grammar}\).}
+
+Returns: \textit{\(\boldsymbol{DK1}\).}\\
+
+\textbf{Specification:} \textit{Creates the \(DK_{1}\) automaton for the given CFG.}\\
+
+The constructor method of the \(DK_{1}\) class creates the entire automaton. As previously emphasized, this is a delicate process. We will thus utilize several auxiliary methods to break down the intricate procedure into more manageable tasks. Below is the formal specification of \(DK_{1}\) building process from the book:\\
+
+% formal building process from Sipser's book.
+
+\vspace{15pt}
+
+% Start State Creation
+\textbf{\textit{Start State Creation}}\\
+
+Firstly, we need to initialize \(\boldsymbol{DK1.start}\), which encompasses all items where the left-hand attribute of the production is equal to \(\boldsymbol{Grammar.start}\). Additionally, \(\boldsymbol{DK1.lookaheads}\) should be set to \(\boldsymbol{Grammar.terminals}\), and \(\boldsymbol{DK1.dotIndex}\) should be assigned to the value 0.\\
+
+Whenever a new state is created, it must be updated with \(\varepsilon\)-transitions as previously described. However, this updating process can be recursive. To address this, we introduce a specialized method \(\boldsymbol{makeEpsilonMoves}\). This method is responsible for updating the current state with \(\varepsilon\)-transitions until no further \(\varepsilon\)-transitions are possible for this state. The implementation details of this method are discussed in the next subsection.\\
+
+\vspace{15pt}
+
+% Make a Queue
+\textbf{\textit{Make a Queue}}\\
+
+Next, we create a queue structure, referred to as \(queue\), composed of \(\boldsymbol{State}\) objects. We use breadth-first search (BFS) to produce new neighboring states and to construct the entire automaton. The queue's first element is predictably \(\boldsymbol{DK1.start}\).\\
+
+\vspace{15pt}
+
+% Process the Queue
+\textbf{\textit{Process the Queue}}\\
+
+During each iteration, we extract and eliminate the first \(\boldsymbol{State}\) element from the queue, referred to as \(\boldsymbol{currentState}\). To generate new neighboring states, we must execute shift transitions as defined above. A separate function, \(\boldsymbol{makeShiftMoves}\), is defined to update the \(\boldsymbol{currentState}\) considering shift transitions. This method fills \(\boldsymbol{currentState.transitionFunction}\) completely with the appropriate transition paths.\\
+
+To update the queue, we loop through \(\boldsymbol{currentState.transitionFunction}\), appending its neighboring states to the queue. However, to avoid infinite loops, we must never add a state to the queue more than once. We maintain a list of previously visited states, \(\boldsymbol{queueCheck}\), and use \(\boldsymbol{State.sameItems}\) to determine whether a state has been visited. If a neighbor state hasn't been visited, it will be added to the queue.\\
+
+The end of this loop will complete the \(DK_{1}\) automaton building process. Now, let's detail the functions we used above: \(\boldsymbol{makeEpsilonMoves}\) and \(\boldsymbol{makeShiftMoves}\).
+
+\vspace{30pt}
+
+% makeEpsilonMoves
+\subsection*{\(\boldsymbol{makeEpsilonMoves}\)}
+
+Parameters: \textit{Grammar \(\boldsymbol{grammar}\).}
+
+Returns: \textit{\(\boldsymbol{void}\).}\\
+
+\textbf{Specification:} \textit{Implements the \(\varepsilon\)-transitions making process as described in the book.}\\
+
+In simpler terms, if a state has an item with the dot following a nonterminal symbol, we must include all new items in the state, with this nonterminal as the left attribute of the production, dotIndex set to 0, and lookaheads updated as previously specified. The \(\boldsymbol{grammar}\) parameter grants access to terminals, nonterminals, and productions.\\
+
+Notably, this is a recursive operation. We use a while loop that continues as long as new items are added to the state. Within this loop, we cycle through items, attempting to introduce new items. The currently iterated item is labeled  \(\boldsymbol{currentItem}\). If the dot of \(\boldsymbol{currentItem}\) follows a nonterminal, we add a new item with the left set to this nonterminal, dotIndex to 0, and lookaheads are updated according to the book's specification. A function, \(\boldsymbol{lookaheadsFromSymbol}\), returns an updated set of lookahead symbols. Then, we iterate through all the \(\boldsymbol{Grammar.productions}\), selecting all productions with this nonterminal on the left, and creating a new item with the corresponding attributes. If a new item is added to the state during this iteration, the process repeats.\\
+
+\begin{codeblock}[makeEpsilonMoves pseudocode]
+    FUNCTION makeEpsilonMoves(Grammar g)
+    DECLARE newItems as boolean
+
+    DO
+    SET newItems to false
+
+    // Create a copy of items to avoid ConcurrentModificationException
+    FOR EACH currentItem IN a NEW HashSet COPIED FROM items
+    DECLARE currentSymbol as Symbol, SET to currentItem.currentSymbol()
+
+    // Continue if the current symbol is null
+    IF currentSymbol IS NULL THEN
+    CONTINUE
+    END IF
+
+    // Process if the current symbol is non-terminal
+    IF currentSymbol is NOT a terminal THEN
+    DECLARE nextSymbol as Symbol, SET to currentItem.nextSymbol()
+    DECLARE lookaheads as NEW HashSet of Symbol
+
+    // Determine lookaheads
+    IF nextSymbol IS NULL THEN
+    COPY lookaheads from currentItem.getLookaheads()
+    ELSE
+    SET lookaheads to State.lookaheadsFromSymbol(nextSymbol, NEW HashSet, g)
+    END IF
+
+    // Iterate through productions in grammar
+    FOR EACH production IN g.getProductions()
+    // Check if the left side of the production equals the current symbol
+    IF production.getLeft() EQUALS currentSymbol THEN
+    CREATE newItem as new Item with (production, 0, lookaheads)
+    UPDATE newItems with OR of newItems and addItem(newItem) result
+    END IF
+    END FOR
+    END IF
+    END FOR
+    WHILE newItems IS TRUE
+
+    END FUNCTION
+\end{codeblock}
+
+\vspace{30pt}
+
+% lookaheadsFromSymbol
+\subsection*{\(\boldsymbol{lookaheadsFromSymbol}\)}
+
+Parameters: \textit{Symbol \(\boldsymbol{symbol}\), Set\(<\)Symbol\(>\) \(\boldsymbol{symbols}\), Grammar \(\boldsymbol{grammar}\).}
+
+Returns: \textit{Set\(<\)Symbol\(>\) \(\boldsymbol{lookaheadsFromSymbol}\) .}\\
+
+\textbf{Specification:} \textit{Calculates and returns all the terminal symbols that can be the first symbol of the valid strings, derivable from the given \(\boldsymbol{symbol}\) within this \(\boldsymbol{grammar}\). As this function is also recursive, the \(\boldsymbol{symbols}\) parameter keeps track of visited symbols to avoid infinite loops.}\\
+
+\begin{codeblock}[lookaheadsFromSymbol pseudocode]
+    FUNCTION lookaheadsFromSymbol(Symbol symbol, HashSet of Symbol symbols, Grammar g)
+    DECLARE lookaheads as a NEW HashSet of Symbol
+    ADD symbol to symbols
+
+    // If the symbol is terminal, return a set containing only this symbol
+    IF symbol is a terminal THEN
+    ADD symbol to lookaheads
+    RETURN lookaheads
+    ELSE
+    // Iterate through productions in the grammar
+    FOR EACH production IN g.getProductions()
+    // Check if the left side of the production equals the symbol
+    IF production.getLeft() EQUALS symbol THEN
+    DECLARE derivedSymbol as Symbol, SET to the first symbol of production's right side
+
+    // Recursively compute lookaheads if derivedSymbol has not been visited
+    IF NOT symbols CONTAINS derivedSymbol THEN
+    UNION lookaheads with lookaheadsFromSymbol(derivedSymbol, symbols, g)
+    END IF
+    END IF
+    END FOR
+    END IF
+
+    RETURN lookaheads
+    END FUNCTION
+
+\end{codeblock}
+
+\vspace{30pt}
+
+% makeShiftMoves
+\subsection*{\(\boldsymbol{makeShiftMoves}\)}
+
+Parameters: \textit{Set\(<\)State\(>\) \(\boldsymbol{states}\), Grammar \(\boldsymbol{grammar}\).}
+
+Returns: \textit{\(\boldsymbol{void}\).}\\
+
+\textbf{Specification:} \textit{Implements the shift transitions making process specified in the book. This method initializes new states, when necessary. The \(\boldsymbol{states}\) parameter ensures not to create the same state multiple times.}\\
+
+The core task of this function is advancing the dot by one symbol to the right. This action triggers new paths/transitions for the automaton. However, the neighboring state might not have been established. Hence, we determine new pathways and, if the requisite state is absent, employ the \(\boldsymbol{State.createTransitionState(...)}\) method to initialize the neighbor.//
+
+\begin{codeblock}[makeShiftMoves pseudocode]
+    FUNCTION makeShiftMoves(HashSet of State states, Grammar g)
+    DECLARE symbolToItemsMap as a NEW HashMap from Symbol to Set of Item
+
+    // Find all transition symbol possibilities and map their items
+    FOR EACH item IN items
+    DECLARE currentSymbol as Symbol, SET to item.currentSymbol()
+
+    // Continue if the current symbol is null
+    IF currentSymbol IS NULL THEN
+    CONTINUE
+    END IF
+
+    // Map the symbol to its corresponding items
+    ADD item to symbolToItemsMap under currentSymbol
+    END FOR
+
+    // Make transition paths
+    FOR EACH entry IN symbolToItemsMap.entrySet()
+    DECLARE transitionSymbol as Symbol, SET to entry's key
+    DECLARE transitionItems as Set of Item, SET to entry's value
+
+    // Create transition state
+    DECLARE transitionState as State, SET to createTransitionState with transitionItems, states, and g
+    MAP transitionSymbol to transitionState in transitionFunction
+    END FOR
+    END FUNCTION
+
+
+\end{codeblock}
