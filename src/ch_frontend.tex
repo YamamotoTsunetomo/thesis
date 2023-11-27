@@ -45,7 +45,7 @@ Thus, to properly encapsulate the concept of a symbol of a CFG, we need an attri
     \item \(\boldsymbol{type}\): \textit{An enum indicating whether the symbol is a terminal or nonterminal.}
 \end{itemize}
 
-We also present some basic functions to further simplify and shorten the overall implementation of the parser.\\
+We also present some basic methods to further simplify and shorten the overall implementation of the parser.\\
 
 \textbf{Methods:}
 \begin{itemize}
@@ -180,9 +180,9 @@ Returns: \textit{\(\boldsymbol{void}\).}\\
 
 \textbf{Specification:} \textit{Utilizes \(\boldsymbol{terminalFilePath}\) to read \texttt{Terminals.txt} and stores all terminal symbols in \(\boldsymbol{Grammar.terminals}\).}\\
 
-Each line in \texttt{Terminals.txt} represents a terminal symbol of the input grammar. The function reads the file line-by-line, removes all whitespace to prevent unexpected errors, creates the corresponding \(\boldsymbol{Symbol}\) objects, and stores them in \(\boldsymbol{Grammar.terminals}\).
+Each line in \texttt{Terminals.txt} represents a terminal symbol of the input grammar. The method reads the file line-by-line, removes all whitespace to prevent unexpected errors, creates the corresponding \(\boldsymbol{Symbol}\) objects, and stores them in \(\boldsymbol{Grammar.terminals}\).
 
-Additionally, the function adds \(\boldsymbol{Symbol}\) objects for these characters \textit{" ", "\texttt{\textbackslash t}", "\texttt{\textbackslash n}"}.
+Additionally, the method adds \(\boldsymbol{Symbol}\) objects for these characters \textit{" ", "\texttt{\textbackslash t}", "\texttt{\textbackslash n}"}.
 
 \vspace{30pt}
 
@@ -237,7 +237,7 @@ Parameters: \textit{String \(\boldsymbol{str}\), Set\texttt{<}Symbol\texttt{>} \
 
 Returns: \textit{ List\texttt{<}Symbol\texttt{>} \(\boldsymbol{stringIntoSymbolsArray}\).}\\
 
-\textbf{Specification:} \textit{The function takes in a string of symbols and sets of both terminal and nonterminal symbols. It breaks down the provided string into individual symbols and returns a list of corresponding \(\boldsymbol{Symbol}\) objects. To accurately identify every symbol in the string, we must be aware of the symbols present in the grammar, hence the need for terminal and nonterminal sets as parameters.}\\
+\textbf{Specification:} \textit{The method takes in a string of symbols and sets of both terminal and nonterminal symbols. It breaks down the provided string into individual symbols and returns a list of corresponding \(\boldsymbol{Symbol}\) objects. To accurately identify every symbol in the string, we must be aware of the symbols present in the grammar, hence the need for terminal and nonterminal sets as parameters.}\\
 
 The tokenization process proceeds as follows:
 
@@ -265,5 +265,173 @@ The Symbol \( \dashv \) represents the \(\boldsymbol{endmark}\) symbol, introduc
 \newpage
 
 
-% Lexical Analysis and Tokenization
-\section{Structure Implementation of DK1 Automaton}\label{sec:Structure Implementation of DK1 Automaton}
+% Structure Implementation of DK1 Automaton
+\section{Structure Implementation of \(\boldsymbol{DK_{1}}\) Automaton}\label{sec:Structure Implementation of \(\boldsymbol{DK_{1}}\) Automaton}
+
+Since we already possess the input grammar, we can now test whether that grammar is LR(1) or not. The book "Introduction to the Theory of Computation" suggests constructing a \( DK_{1} \) automaton for this purpose. Before constructing the \( DK_{1} \) automaton for a specific CFG, we must implement its general structure as mathematically outlined in the book. This section will discuss the \( DK_{1} \) automaton’s structure implementation, while the next section will cover its construction process for a specific language, in our case the C0 language.
+
+\vspace{20pt}
+
+% DK1 automaton structure
+\subsection*{\(\boldsymbol{DK_{1}}\) automaton structure}
+
+% ----- Image: Example of DK_1 automaton
+
+A \( DK_{1} \) is a finite deterministic automaton.
+
+% Finite deterministic automaton Definition
+\begin{definition}[2.0]
+    A finite deterministic automaton (DFA) is defined as a 5-tuple  \((Q, \Sigma, \delta, q_{0}, F)\), where
+    \begin{enumerate}
+        \item \(Q\) is a finite set called the states,
+        \item \(\Sigma\) is a finite set called the alphabet,
+        \item \(\delta : Q \times \Sigma \to Q\) is the transition function,
+        \item \(q_{0} \in Q\) is the start state, and
+        \item \(F\) is the set of accept states.
+    \end{enumerate}
+\end{definition}
+\setlength{\parindent}{0pt}
+
+In \( DK_{1} \) automaton, a state encapsulates \(items\) (also referred to as \(dotted rules\)). Each \(item\) contains a production rule, a dot at the corresponding point in the rule to signify progress, and lookahead symbols. If this terminology is unfamiliar to you, please refer to the book "Introduction to the Theory of Computation”.\\
+
+Based on the \( DK_{1} \) automaton specification from "Introduction to the Theory of Computation”, and the definition of finite deterministic automaton we aim to replicate the \( DK_{1} \) automaton's structure to align our implementation with the mathematical theory developed by Michael Sipser.
+
+We create the following three classes:
+\begin{enumerate}
+    \item Class \(\boldsymbol{Item}\): \textit{The Items (dotted rules) serve as fundamental elements of the states in \( DK_{1} \). Therefore, we need a class to encapsulate this concept.}
+    \item Class \(\boldsymbol{State}\): \textit{The need for a \(\boldsymbol{State}\) class is evident. An automaton consists of states, and each state encompasses several \(\boldsymbol{State}\) objects.}
+    \item Class \(\boldsymbol{DK_{1}}\): \textit{This class represents the entire \( DK_{1} \) automaton.}
+\end{enumerate}
+
+These classes will be grouped under a package named \(\boldsymbol{dk1}\).\\
+
+Let’s delve into the details of each of these classes.
+
+% Item Class
+\subsection*{\(\boldsymbol{Item}\) Class}
+
+The \(\boldsymbol{Item}\) class encapsulates the concept of an item (dotted rule) as presented in the book. It comprises a production rule, the location of a dot within this production rule, and lookahead symbols. To efficiently represent this concept, we will utilize three attributes along with several straightforward methods.\\
+
+\textbf{Attributes:}
+\begin{itemize}
+    \item \(\boldsymbol{production}\): \textit{A \(\boldsymbol{Production}\) object that represents the production rule for this item.}
+    \item \(\boldsymbol{dotIndex}\): \textit{An Integer that represents the location of the corresponding dot in the item}
+    \item \(\boldsymbol{lookaheads}\): \textit{A set of \(\boldsymbol{Symbol}\) objects to represent all the lookahead symbols for this item}
+\end{itemize}
+
+\textbf{Methods:}
+\begin{itemize}
+    \item \(\boldsymbol{constructor}\): \textit{Initializes an \(\boldsymbol{Item}\) object with the specified production, dotIndex, and lookaheads.}
+    \item \(\boldsymbol{isComplete}\): \textit{Returns true if the \(item\) is complete, i.e., if the dot is at the end of the production rule; otherwise, it returns false.}
+    \item \(\boldsymbol{currentSymbol}\): \textit{Returns the symbol next to the dot in the production rule if it exists; Otherwise returns \(null\).}
+    \item \(\boldsymbol{nextSymbol}\): \textit{Returns the symbol after the symbol next to the dot in the production rule if it exists, Otherwise returns \(null\). These methods, are trivial but shorten the whole implementation code significantly.}
+    \item \(\boldsymbol{equals}\): \textit{Determines if two \(\boldsymbol{Item}\) objects are equal in all attributes: production, dotIndex, and lookaheads.}
+    \item \(\boldsymbol{hashCode}\): \textit{Returns a hash code of the item.}
+    \item \(\boldsymbol{sameProductionAndDot}\): \textit{This method is similar to \(\boldsymbol{equals}\), but it doesn't compare lookaheads. During the lookahead calculation, it's essential to identify identical production rules and dotIndex for grouping the lookaheads.}
+    \item \(\boldsymbol{addLookaheads}\): \textit{Merges two sets of lookahead symbols}
+\end{itemize}
+
+\begin{codeblock}[Item Class]
+    class Item {
+        Production production;
+        int dotIndex;
+        Set<Symbol> lookaheads;
+
+        Item(Production production, int dotIndex, Set<Symbol> lookaheads) {}
+        boolean isComplete() {}
+        Symbol currentSymbol() {}
+        Symbol nextSymbol(){}
+        boolean equals(Object obj) {}
+        int hashCode() {}
+        boolean sameProductionAndDot(Item item) {}
+        void addLookaheads(Set<Symbol> newLookaheads) {}
+    }
+\end{codeblock}
+
+\vspace{10pt}
+
+% State Class
+\subsection*{\(\boldsymbol{State}\) Class}
+
+The \(\boldsymbol{State}\) class represents a state within the \(DK_{1}\) automaton. It comprises a set of \(\boldsymbol{Item}\) objects, a local transition function specific to this state, and a set of complete rules, which are \(\boldsymbol{Item}\) objects with a dot at the end of the production rule.\\
+
+\textbf{Attributes:}
+\begin{itemize}
+    \item \(\boldsymbol{items}\): \textit{A set of \(\boldsymbol{Item}\) objects that represents all the items for this state}
+    \item \(\boldsymbol{transitionFunction}\): \textit{A Map\(<\)Symbol, State\(>\) representing the neighboring states of the current state. In other words, the \(\boldsymbol{transitionFunction}\) tracks paths from the current state to other states via a specific \(\boldsymbol{Symbol}\) object.}
+    \item \(\boldsymbol{completeItems}\): \textit{A set of \(\boldsymbol{Item}\) objects to represent all the complete rules.}
+\end{itemize}
+
+\textbf{Methods:}
+\begin{itemize}
+    \item \(\boldsymbol{addItem}\): \textit{adds a new \(\boldsymbol{Item}\) object to the items. If a similar item with the same production and dotIndex already exists, the method simply merges the lookaheads and returns false.}
+    \item \(\boldsymbol{sameItems}\): \textit{Returns true if two \(\boldsymbol{State}\) objects possess identical sets of \(\boldsymbol{Item}\) objects. Although two states may be identical, they might not be considered equal if one is still under construction and its \(\boldsymbol{transitionFunction}\) isn’t finalized. Therefore, identity is checked using the items.}
+    \item \(\boldsymbol{createTransitionState}\): \textit{Creates and returns a new \(\boldsymbol{State}\) object with a given set of items. If the state with the same items already exists, the method doesn’t create a new state and returns an existing one. Creating new transition states is necessary in the construction process of the automaton.}
+\end{itemize}
+
+\begin{codeblock}[State Class]
+    class State {
+        Set<Item> items;
+        Map<Symbol, State> transitionFunction;
+        Set<Item> completeItems;
+
+        boolean addItem(Item newItem) {}
+        boolean sameItems(State newState) {}
+        State createTransitionState(Set<Item> transitionItems, Set<State> states, Grammar g) {}
+    }
+\end{codeblock}
+
+\vspace{10pt}
+
+% DK1 Class
+\subsection*{\(\boldsymbol{DK1}\) Class}
+
+The \(\boldsymbol{DK1}\) class represents the concept of the entire \(\boldsymbol{DK_{1}}\) deterministic finite automaton. Thus, it should encompass all the tuple elements mentioned in the definition of the DFA.\\
+
+\textbf{Attributes:}
+\begin{itemize}
+    \item \(\boldsymbol{start}\): \textit{A \(\boldsymbol{start}\) object representing the start state of the automaton.}
+    \item \(\boldsymbol{states}\): \textit{A set of \(\boldsymbol{start}\) objects representing all the states of the automaton.}
+    \item \(\boldsymbol{grammar}\): \textit{A \(\boldsymbol{Grammar}\) object representing the input CFG.}
+\end{itemize}
+
+Let's ensure these three attributes encompass all elements of the DFA's 5-tuple.
+
+\begin{enumerate}
+    \item States (\(\boldsymbol{Q}\)):  \textit{\(\boldsymbol{DK1.states}\).}
+    \item Alphabet (\(\boldsymbol{\Sigma}\)):  \textit{\(\boldsymbol{DK1.grammar.terminals}\) \(\cup\) \(\boldsymbol{DK1.grammar.nonterminals}\).}
+    \item Transition Function (\(\boldsymbol{\delta}\)):  \textit{Since each \(\boldsymbol{State}\) object possesses its own local \(\boldsymbol{transitionFunction}\), \(\boldsymbol{\delta}\) is represented through \(\boldsymbol{DK1.states}\).}
+    \item Start state (\(\boldsymbol{q_{0}}\)):  \textit{\(\boldsymbol{DK1.start}\).}
+    \item Set of accept states (\(\boldsymbol{F}\)):  \textit{Following the literature, a state is considered accepting if it contains a completed rule, specifically, an item with a dot at the end. Consequently, we can identify accepting states by iterating through the items of a \(\boldsymbol{State}\) and using the \(\boldsymbol{Item.isComplete()}\) method. \(\boldsymbol{DK1.states}\).}
+\end{enumerate}
+
+All the methods mentioned below are quite complex from the implementation point of view. Here, we'll provide a brief description and reserve a detailed specification for the subsequent sections.\\
+
+\textbf{Methods:}
+\begin{itemize}
+    \item \(\boldsymbol{constructor}\): \textit{Constructs an entire \(DK_{1}\) automaton based on the provided input \(\boldsymbol{Grammar}\) object.}
+    \item \(\boldsymbol{dk1Test}\): \textit{Returns true if the \(\boldsymbol{Grammar}\) is LR(1), false otherwise.}
+    \item \(\boldsymbol{parseString}\): \textit{Returns a derivation tree for the given \textbf{valid string}.}
+    \item \(\boldsymbol{findHandle}\): \textit{Returns the handle for the given \textbf{valid string}.}
+    \item \(\boldsymbol{makeReduction}\): \textit{Makes a one-step reduction of the \textbf{valid string} based on the provided handle.}
+\end{itemize}
+
+\begin{codeblock}[DK1 Class]
+    class DK1 {
+        State start;
+        Set<State> states;
+        Grammar g;
+
+        DK1(Grammar grammar) {}
+        boolean dk1Test() {}
+        DTE parseString(String validString) {}
+        Item findHandle(List<Symbol> validStringArray) {}
+        List<Symbol> makeReduction(List<Symbol> validStringArray, Item handle) {}
+    }
+\end{codeblock}
+
+\newpage
+
+
+% DK1 Automaton Builder for a CFG
+\section{\(\boldsymbol{DK_{1}}\) Automaton Builder for a CFG}\label{sec:\(\boldsymbol{DK_{1}}\) Automaton Builder for a CFG}
