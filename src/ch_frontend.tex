@@ -34,7 +34,7 @@ For a convenient implementation design, we group these three classes under a pac
 Now let’s explore each of these classes in detail.
 
 % Symbol Class
-\subsection*{\(\boldsymbol{Symbol}\) Class}
+\subsection{\(\boldsymbol{Symbol}\) Class}
 
 The \(\boldsymbol{Symbol}\) class encapsulates the concept of terminal and nonterminal symbols. In CFGs, terminal and nonterminal symbols are strings. The input grammar explicitly determines which of the symbols are terminal and which are nonterminal.\\
 Thus, to properly encapsulate the concept of a symbol of a CFG, we need an attribute for the string content and another attribute for the type of the symbol (terminal / nonterminal).\\
@@ -75,7 +75,7 @@ We also present some basic methods to further simplify and shorten the overall i
 \vspace{10pt}
 
 % Production Class
-\subsection*{\(\boldsymbol{Production}\) Class}
+\subsection{\(\boldsymbol{Production}\) Class}
 
 The \(\boldsymbol{Production}\) class encapsulates the concept of a production rule of a CFG. A representation of a production rule has the form:
 
@@ -113,7 +113,7 @@ meaning – the right-hand side sequence can be derived from the left-hand side 
 \vspace{10pt}
 
 % Grammar Class
-\subsection*{\(\boldsymbol{Grammar}\) Class}
+\subsection{\(\boldsymbol{Grammar}\) Class}
 
 The \(\boldsymbol{Grammar}\) class represents an entire context-free grammar. Therefore, it should properly encompass:
 
@@ -170,7 +170,7 @@ We provide the input grammar by passing two file paths as parameters to the \(\b
 The provided \texttt{.txt} files are essentially lines of strings lacking any inherent meaning. Tokenization transforms these lines of strings into sequences of \(\boldsymbol{Symbol}\) objects. We will demonstrate how to read from these \texttt{.txt} files, tokenize the content, and store it appropriately.
 
 % readTerminals
-\subsection*{\(\boldsymbol{Grammar.readTerminals}\)}
+\subsection{\(\boldsymbol{Grammar.readTerminals}\)}
 
 Parameters: \textit{String \(\boldsymbol{terminalFilePath}\).}
 
@@ -187,7 +187,7 @@ Additionally, the method adds \(\boldsymbol{Symbol}\) objects for these characte
 \vspace{30pt}
 
 % readNonerminals
-\subsection*{\(\boldsymbol{Grammar.readNonterminals}\)}
+\subsection{\(\boldsymbol{Grammar.readNonterminals}\)}
 
 Parameters: \textit{String \(\boldsymbol{grammarFilePath}\).}
 
@@ -204,7 +204,7 @@ To do this, the method reads the file line-by-line, removes all whitespace to pr
 \vspace{30pt}
 
 % readProductions
-\subsection*{\(\boldsymbol{Grammar.readProductions}\)}
+\subsection{\(\boldsymbol{Grammar.readProductions}\)}
 
 Parameters: \textit{String \(\boldsymbol{grammarFilePath}\).}
 
@@ -231,7 +231,7 @@ We iterate through the \(rightParts\) array. Using \(\boldsymbol{stringIntoSymbo
 \vspace{30pt}
 
 % stringIntoSymbols
-\subsection*{Static \(\boldsymbol{stringIntoSymbols}\)}
+\subsection{Static \(\boldsymbol{stringIntoSymbols}\)}
 
 Parameters: \textit{String \(\boldsymbol{str}\), Set\texttt{<}Symbol\texttt{>} \(\boldsymbol{terminals}\), Set\texttt{<}Symbol\texttt{>} \(\boldsymbol{nonterminals}\).}
 
@@ -273,7 +273,7 @@ Since we already possess the input grammar, we can now test whether that grammar
 \vspace{20pt}
 
 % DK1 automaton structure
-\subsection*{\(\boldsymbol{DK_{1}}\) automaton structure}
+\subsection{\(\boldsymbol{DK_{1}}\) automaton structure}
 
 % ----- Image: Example of DK_1 automaton
 
@@ -308,7 +308,7 @@ These classes will be grouped under a package named \(\boldsymbol{dk1}\).\\
 Let’s delve into the details of each of these classes.
 
 % Item Class
-\subsection*{\(\boldsymbol{Item}\) Class}
+\subsection{\(\boldsymbol{Item}\) Class}
 
 The \(\boldsymbol{Item}\) class encapsulates the concept of an item (dotted rule) as presented in the book. It comprises a production rule, the location of a dot within this production rule, and lookahead symbols. To efficiently represent this concept, we will utilize three attributes along with several straightforward methods.\\
 
@@ -351,7 +351,7 @@ The \(\boldsymbol{Item}\) class encapsulates the concept of an item (dotted rule
 \vspace{10pt}
 
 % State Class
-\subsection*{\(\boldsymbol{State}\) Class}
+\subsection{\(\boldsymbol{State}\) Class}
 
 The \(\boldsymbol{State}\) class represents a state within the \(DK_{1}\) automaton. It comprises a set of \(\boldsymbol{Item}\) objects, a local transition function specific to this state, and a set of complete rules, which are \(\boldsymbol{Item}\) objects with a dot at the end of the production rule.\\
 
@@ -384,7 +384,7 @@ The \(\boldsymbol{State}\) class represents a state within the \(DK_{1}\) automa
 \vspace{10pt}
 
 % DK1 Class
-\subsection*{\(\boldsymbol{DK1}\) Class}
+\subsection{\(\boldsymbol{DK1}\) Class}
 
 The \(\boldsymbol{DK1}\) class represents the concept of the entire \(\boldsymbol{DK_{1}}\) deterministic finite automaton. Thus, it should encompass all the tuple elements mentioned in the definition of the DFA.\\
 
@@ -441,7 +441,7 @@ We have built a solid framework to construct the \(DK_{1}\) automaton of a parti
 \vspace{10pt}
 
 % DK1.constructor
-\subsection*{\(\boldsymbol{DK1.constructor}\)}
+\subsection{\(\boldsymbol{DK1.constructor}\)}
 
 Parameters: \textit{Grammar \(\boldsymbol{grammar}\).}
 
@@ -474,16 +474,16 @@ Next, we create a queue structure, referred to as \(queue\), composed of \(\bold
 % Process the Queue
 \textbf{\textit{Process the Queue}}\\
 
-During each iteration, we extract and eliminate the first \(\boldsymbol{State}\) element from the queue, referred to as \(\boldsymbol{currentState}\). To generate new neighboring states, we must execute shift transitions as defined above. A separate function, \(\boldsymbol{makeShiftMoves}\), is defined to update the \(\boldsymbol{currentState}\) considering shift transitions. This method fills \(\boldsymbol{currentState.transitionFunction}\) completely with the appropriate transition paths.\\
+During each iteration, we extract and eliminate the first \(\boldsymbol{State}\) element from the queue, referred to as \(\boldsymbol{currentState}\). To generate new neighboring states, we must execute shift transitions as defined above. A separate method, \(\boldsymbol{makeShiftMoves}\), is defined to update the \(\boldsymbol{currentState}\) considering shift transitions. This method fills \(\boldsymbol{currentState.transitionFunction}\) completely with the appropriate transition paths.\\
 
 To update the queue, we loop through \(\boldsymbol{currentState.transitionFunction}\), appending its neighboring states to the queue. However, to avoid infinite loops, we must never add a state to the queue more than once. We maintain a list of previously visited states, \(\boldsymbol{queueCheck}\), and use \(\boldsymbol{State.sameItems}\) to determine whether a state has been visited. If a neighbor state hasn't been visited, it will be added to the queue.\\
 
-The end of this loop will complete the \(DK_{1}\) automaton building process. Now, let's detail the functions we used above: \(\boldsymbol{makeEpsilonMoves}\) and \(\boldsymbol{makeShiftMoves}\).
+The end of this loop will complete the \(DK_{1}\) automaton building process. Now, let's detail the methods we used above: \(\boldsymbol{makeEpsilonMoves}\) and \(\boldsymbol{makeShiftMoves}\).
 
 \vspace{30pt}
 
 % makeEpsilonMoves
-\subsection*{\(\boldsymbol{makeEpsilonMoves}\)}
+\subsection{\(\boldsymbol{makeEpsilonMoves}\)}
 
 Parameters: \textit{Grammar \(\boldsymbol{grammar}\).}
 
@@ -493,7 +493,7 @@ Returns: \textit{\(\boldsymbol{void}\).}\\
 
 In simpler terms, if a state has an item with the dot following a nonterminal symbol, we must include all new items in the state, with this nonterminal as the left attribute of the production, dotIndex set to 0, and lookaheads updated as previously specified. The \(\boldsymbol{grammar}\) parameter grants access to terminals, nonterminals, and productions.\\
 
-Notably, this is a recursive operation. We use a while loop that continues as long as new items are added to the state. Within this loop, we cycle through items, attempting to introduce new items. The currently iterated item is labeled  \(\boldsymbol{currentItem}\). If the dot of \(\boldsymbol{currentItem}\) follows a nonterminal, we add a new item with the left set to this nonterminal, dotIndex to 0, and lookaheads are updated according to the book's specification. A function, \(\boldsymbol{lookaheadsFromSymbol}\), returns an updated set of lookahead symbols. Then, we iterate through all the \(\boldsymbol{Grammar.productions}\), selecting all productions with this nonterminal on the left, and creating a new item with the corresponding attributes. If a new item is added to the state during this iteration, the process repeats.\\
+Notably, this is a recursive operation. We use a while loop that continues as long as new items are added to the state. Within this loop, we cycle through items, attempting to introduce new items. The currently iterated item is labeled  \(\boldsymbol{currentItem}\). If the dot of \(\boldsymbol{currentItem}\) follows a nonterminal, we add a new item with the left set to this nonterminal, dotIndex to 0, and lookaheads are updated according to the book's specification. A method, \(\boldsymbol{lookaheadsFromSymbol}\), returns an updated set of lookahead symbols. Then, we iterate through all the \(\boldsymbol{Grammar.productions}\), selecting all productions with this nonterminal on the left, and creating a new item with the corresponding attributes. If a new item is added to the state during this iteration, the process repeats.\\
 
 \begin{codeblock}[makeEpsilonMoves pseudocode]
     FUNCTION makeEpsilonMoves(Grammar g)
@@ -541,13 +541,13 @@ Notably, this is a recursive operation. We use a while loop that continues as lo
 \vspace{30pt}
 
 % lookaheadsFromSymbol
-\subsection*{\(\boldsymbol{lookaheadsFromSymbol}\)}
+\subsection{\(\boldsymbol{lookaheadsFromSymbol}\)}
 
 Parameters: \textit{Symbol \(\boldsymbol{symbol}\), Set\(<\)Symbol\(>\) \(\boldsymbol{symbols}\), Grammar \(\boldsymbol{grammar}\).}
 
 Returns: \textit{Set\(<\)Symbol\(>\) \(\boldsymbol{lookaheadsFromSymbol}\) .}\\
 
-\textbf{Specification:} \textit{Calculates and returns all the terminal symbols that can be the first symbol of the valid strings, derivable from the given \(\boldsymbol{symbol}\) within this \(\boldsymbol{grammar}\). As this function is also recursive, the \(\boldsymbol{symbols}\) parameter keeps track of visited symbols to avoid infinite loops.}\\
+\textbf{Specification:} \textit{Calculates and returns all the terminal symbols that can be the first symbol of the valid strings, derivable from the given \(\boldsymbol{symbol}\) within this \(\boldsymbol{grammar}\). As this method is also recursive, the \(\boldsymbol{symbols}\) parameter keeps track of visited symbols to avoid infinite loops.}\\
 
 \begin{codeblock}[lookaheadsFromSymbol pseudocode]
     FUNCTION lookaheadsFromSymbol(Symbol symbol, HashSet of Symbol symbols, Grammar g)
@@ -581,7 +581,7 @@ Returns: \textit{Set\(<\)Symbol\(>\) \(\boldsymbol{lookaheadsFromSymbol}\) .}\\
 \vspace{30pt}
 
 % makeShiftMoves
-\subsection*{\(\boldsymbol{makeShiftMoves}\)}
+\subsection{\(\boldsymbol{makeShiftMoves}\)}
 
 Parameters: \textit{Set\(<\)State\(>\) \(\boldsymbol{states}\), Grammar \(\boldsymbol{grammar}\).}
 
@@ -589,7 +589,7 @@ Returns: \textit{\(\boldsymbol{void}\).}\\
 
 \textbf{Specification:} \textit{Implements the shift transitions making process specified in the book. This method initializes new states, when necessary. The \(\boldsymbol{states}\) parameter ensures not to create the same state multiple times.}\\
 
-The core task of this function is advancing the dot by one symbol to the right. This action triggers new paths/transitions for the automaton. However, the neighboring state might not have been established. Hence, we determine new pathways and, if the requisite state is absent, employ the \(\boldsymbol{State.createTransitionState(...)}\) method to initialize the neighbor.//
+The core task of this method is advancing the dot by one symbol to the right. This action triggers new paths/transitions for the automaton. However, the neighboring state might not have been established. Hence, we determine new pathways and, if the requisite state is absent, employ the \(\boldsymbol{State.createTransitionState(...)}\) method to initialize the neighbor.//
 
 \begin{codeblock}[makeShiftMoves pseudocode]
     FUNCTION makeShiftMoves(HashSet of State states, Grammar g)
@@ -635,7 +635,7 @@ The book provides the following formal specification of the \(DK_{1}\) Test:
 \vspace{20pt}
 
 % dk1Test
-\subsection*{\(\boldsymbol{dk1Test}\)}
+\subsection{\(\boldsymbol{dk1Test}\)}
 
 The method \(\boldsymbol{dk1Test}\) iterates through all the states in \(\boldsymbol{DK1.states}\), with the current state referred to as \(\boldsymbol{currentState}\). Within this, another loop iterates over the complete rule items inside \(\boldsymbol{currentState}\), which we will label as \(\boldsymbol{R1}\). Furthermore, another loop iterates through items other than \(\boldsymbol{R1}\), which we designate as \(\boldsymbol{R2}\).\\
 
@@ -702,7 +702,7 @@ If all the states pass these checks, then the \(DK_{1}\) Test is deemed successf
 
 
 % Analysis and Corrections of C0 Grammar based on DK1 Test
-\section{Analysis and Corrections of C0 Grammar based on \(\boldsymbol{DK_{1}}\) Test}\label{sec:DK1 Test}
+\section{Analysis and Corrections of C0 Grammar based on \(\boldsymbol{DK_{1}}\) Test}\label{sec:Analysis and Corrections of C0 Grammar based on DK1 Test}
 
 Regrettably, the initial C0 grammar (as shown in Table 1.0) doesn’t pass the \(DK1\) Test without a few production rule adjustments.\\
 
@@ -774,3 +774,392 @@ The failure root causes are:
 
 % updated grammar image
 
+\newpage
+
+% Pre-processing for C0 Source Code
+\section{Pre-processing for C0 Source Code}\label{sec:Pre-processing for C0 Source Code}
+
+A pre-processor is a tool that processes the source code before the actual compilation begins. We plan to design a basic pre-processor to manage extra whitespaces, tabs, and end-lines in the source code. Creating an in-depth pre-processor is beyond the scope of this thesis. The asterisk symbol \(\ast\) introduced ambiguity in our grammar. However, languages like C++ allow programmers to use it for dereferencing. We will discuss how the pre-processor can address this, allowing programmers to use the symbol seamlessly. Similarly, we'll discuss how to remove the additional \texttt{(bool)} prefix before \texttt{<id>} that identifies a Boolean factor.
+
+\vspace{10pt}
+
+% eliminateExtraWhiteSpace
+\subsection{\(\boldsymbol{eliminateExtraWhiteSpace}\)}
+
+Parameters: \textit{List\(<\)Symbol\(>\) \(\boldsymbol{validStringArray}\).}
+
+Returns: \textit{List\(<\)Symbol\(>\) \(\boldsymbol{updatedValidStringArray}\).}\\
+
+\textbf{Specification:} \textit{The method removes excess whitespace from the provided \(\boldsymbol{validStringArray}\) as detailed below}\\
+
+\begin{enumerate}
+    \item If there are adjacent whitespaces, remove them, and leave only one.
+    \item Erase all the tabs and end-lines: \texttt{\textbackslash  t} \texttt{\textbackslash  n}
+    \item Erase all surrounding whitespace of these symbols:
+    \begin{verbatim}
+        ,    ;    +    -    *    /    &    |    !    =
+    \end{verbatim}
+\end{enumerate}
+
+This method offers programmers some flexibility when using whitespaces. Further refinement of this method would necessitate careful implementation and rigorous testing. Therefore, we'll pause here and resume the primary focus of this thesis.
+
+\vspace{30pt}
+
+% Distinguish multiplication and pointer dereferencing
+\subsection{Distinguish multiplication and pointer dereferencing}
+
+In the updated C0 grammar we use \(\textquotesingle\) instead of \(\ast\) when dereferencing a pointer. By distinguishing between these two cases in the pre-processing phase, we can allow programmers to use \(\ast\) for pointer dereferencing, even though the grammar uses \(\textquotesingle\). Once we identify the asterisks used for pointer dereferencing, we'll replace them with \(\textquotesingle\) before the parsing process starts.\\
+
+To differentiate between multiplication and pointer dereferencing, we need to observe the immediate symbol to the right of the \(\ast\).
+
+\begin{verbatim}
+    <id> → <id>*
+    <T> → <T>*<F>
+\end{verbatim}
+
+To differentiate between the two, we'll compare the potential first terminals of \texttt{<F>} and those that can stand immediately to the right of \texttt{<id>}.\\
+
+The first terminal of \texttt{<F>} can be:
+\begin{center}
+    \begin{tabular}{|c|c|c|c|}
+        \hline
+        A letter derivable from \( <Le> \) & Unary \( - \) & \( ( \) & A digit derivable from \( <Di> \) \\
+        \hline
+    \end{tabular}
+\end{center}
+
+The first terminal standing to the right of \texttt{<id>} can be:
+\begin{center}
+    \begin{tabular}{|c|c|c|c|c|c|c|c|}
+        \hline
+        \( . \) & \( [ \) & \( \ast \) & \( \& \) & \( = \) & \( / \) & \( + \) & Binary \( - \)\\
+        \hline
+        \( > \) & \( < \) & \( \! \) & \( ; \) & \( \} \) & \( , \) & Whitespace & \\
+        \hline
+    \end{tabular}
+\end{center}
+
+Notably, the minus symbol is the sole overlapping element between the two lists. However, it represents a unary operation in the first context and a binary one in the second. Therefore, to correctly identify the pointer dereference symbol, we must differentiate between the unary and binary minus operations within the C0 grammar.\\
+
+To do so, we should observe what can be on the left of the \(-\) symbol.\\
+
+On the left of Binary \(-\) can be:
+\begin{center}
+    \begin{tabular}{|c|c|c|c|c|c|c|}
+        \hline
+        \( ) \) & \( <C> \) & \( <Na> \) & \( ] \) & \( ' \) & \( \& \)\\
+        \hline
+    \end{tabular}
+\end{center}
+
+On the left of Unary \(-\) can be:
+\begin{center}
+    \begin{tabular}{|c|c|c|c|c|c|c|c|c|c|c|c|}
+        \hline
+        \( \ast \) & \( / \) & \( + \) & \( - \) & \( > \) & \( = \) & \( < \) & \( \&\& \) & \( || \) & \( \) & \( , \) & \( ( \)\\
+        \hline
+    \end{tabular}
+\end{center}
+
+Thus we confidently assert that we understand how to differentiate between binary and unary minus. Consequently, we also know how to distinguish between multiplication and pointer dereferencing.\\
+
+During the pre-processing phase, when encountering \(\ast\), we'll inspect the subsequent symbol. If it is a letter, unary minus, an opening bracket, or a digit, we'll replace it with \(\textquotesingle\). Otherwise, we leave it as it is.
+
+\vspace{30pt}
+
+% Distinguish arithmetic and boolean identifiers
+\subsection{Distinguish arithmetic and boolean identifiers}
+
+In this final segment of our pre-processing discussion, we aim to differentiate between boolean and arithmetic identifiers, and address the redundant \texttt{(bool)} prefix in the modified production:
+
+\begin{verbatim}
+    <BF> →(bool)<id>.
+\end{verbatim}
+
+To distinguish between boolean and arithmetic identifiers, understanding whether a variable is global or local is essential. Variables can be global or local. Consequently, we should create a set containing boolean variable names, initializing it with global variables from \texttt{<VaDS>} and subsequently updating it with local variables at the start and end of the method.
+
+\newpage
+
+
+% Derivation Tree Structure and Implementation
+\section{Derivation Tree Structure and Implementation}\label{sec:Derivation Tree Structure and Implementation}
+
+At this point, we have prepared all the tools in order to start the parsing process. But, just parsing is not enough if we do not store its result. That’s why we need to build a structure called a derivation tree that will help us to conveniently store and afterward efficiently use the data provided during the parsing phase. When the parsing process is complete, we will hand over the parse tree of the given source code to our college Irakli Khotchava who will use it to generate relevant assembly code.
+
+\vspace{10pt}
+
+% Derivation tree structure
+\subsection{Derivation tree structure}
+
+\begin{definition}[3.0]
+    A derivation tree element is defined as a 4-tuple \((label, father, fson, bro)\), where
+    \begin{enumerate}
+        \item \(label\) is a string, the actual content of this element,
+        \item \(father\) represents the parent of this element in the derivation tree. If the element is the \(root\) we make \(father\) = \(null\),
+        \item \(fson\) is the first son (leftmost) of this element in the derivation tree. If the element is a \(leaf\) we make \(fson\) = \(null\),
+        \item \(bro\) represents the right brother of the current element in the derivation tree if there is such a brother. Otherwise we make \(bro\) = \(null\).
+    \end{enumerate}
+
+    A derivation tree is a tree derived from the root derivation tree element.
+
+\end{definition}
+\setlength{\parindent}{0pt}
+
+\vspace{10pt}
+
+% Derivation tree structure implementation
+\subsection{Derivation tree structure implementation}
+
+To replicate the structure given above, we will create the class \(\boldsymbol{DTE}\) under a package named \(\boldsymbol{tree}\). \(\boldsymbol{DTE}\) will encapsulate the concept of derivation tree element.\\
+
+\textbf{Attributes:}
+\begin{itemize}
+    \item \(\boldsymbol{label}\): \textit{A \(\boldsymbol{Symbol}\) object representing the label string of the element. Since, our goal is for each tree element to contain only one terminal or nonterminal symbol, the type of \(\boldsymbol{label}\) is \(\boldsymbol{Symbol}\).}
+    \item \(\boldsymbol{fatehr}\): \textit{A \(\boldsymbol{DTE}\) object representing the father.}
+    \item \(\boldsymbol{fson}\): \textit{A \(\boldsymbol{DTE}\) object representing the fson.}
+    \item \(\boldsymbol{bro}\): \textit{A \(\boldsymbol{DTE}\) object representing the bro.}
+\end{itemize}
+
+\(\boldsymbol{DTE}\) class has several methods necessary for the code generation process, but for the derivation tree building, we use only one method called \(\boldsymbol{updateTheParseTree}\) that will update the current derivation tree on every reduction step during the parsing process and finally return the entire derivation tree of the given source code.
+
+\vspace{10pt}
+
+% updateTheParseTree
+\subsection{Static \(\boldsymbol{updateTheParseTree}\)}
+
+Parameters: \textit{List\(<\)DTE\(>\) \(\boldsymbol{parseTree}\), Item \(\boldsymbol{handle}\).}
+
+Returns: \textit{List\(<\)DTE\(>\) \(\boldsymbol{updatedParseTree}\)}\\
+
+\textbf{Specification:} \textit{updates the current \(\boldsymbol{parseTree}\) with respect to the given handle reduction step of the parsing process.}\\
+
+At the beginning of the parsing process, we are given only the source code and we do not have any idea what the derivation tree will look like. At every step of the parsing process, we can find the forced handle and make one reduction step. Thus, we can not start building the derivation tree from the root, we have to start from the leaves and reverse engineer to the root. At the very first call of this method, the List \(\boldsymbol{parseTree}\) will contain a consistent sequence of leaves each of them containing one symbol from the tokenization of the source code. These leaves will not have \(fathers\), \(fsons\), nor \(bros\), all these values will be \(null\).\\
+
+In a step of the reduction with the given handle, the method will:
+\begin{enumerate}
+    \item Fetch the new father’s label from \(\boldsymbol{handle.production.left}\) named \(\boldsymbol{fatherSymbol}\).
+    \item Find the subsequence of the \(\boldsymbol{parseTree}\) that we will reduce to the \(\boldsymbol{fatherSymbol}\).
+    \item \(\boldsymbol{rightIndex = handle.dotIndex}\), (where \(\boldsymbol{handle.dotIndex}\) follows the last symbol of the reduction string)
+    \item \(\boldsymbol{leftIndex = rightIndex - handle.production.right.size()}\).
+    \item Set up brotherhood inside this subsequence. Start from \(\boldsymbol{leftIndex}\) and make the next right element of the \(\boldsymbol{parseTree}\) its brother till \(\boldsymbol{rightIndex}\).
+    \item Create the father \(\boldsymbol{DTE}\) object \(\boldsymbol{father}\) with:
+    \begin{itemize}
+        \item \(\boldsymbol{label = fatherSymbol}\),
+        \item \(\boldsymbol{fson = parseTree.get(leftIndex)}\),
+    \end{itemize}
+    \item Set \(\boldsymbol{father}\) as the father of the derivation tree elements from \(\boldsymbol{leftIndex}\) to \(\boldsymbol{rightIndex}\).
+    \item Erase the \(\boldsymbol{leftIndex}\) to \(\boldsymbol{rightIndex}\) segment of \(\boldsymbol{parseTree}\) and replace it with \(\boldsymbol{father}\).
+    \item Return the updated \(\boldsymbol{parseTree}\).
+\end{enumerate}
+
+\vspace{10pt}
+
+\begin{codeblock}[updateTheParseTree pseudocode]
+    FUNCTION updateTheParseTree(ArrayList of DTE parseTree, Item handle)
+    DECLARE parentSymbol as Symbol, SET to handle.getProduction().getLeft()
+    DECLARE rightIndex as integer, SET to handle.getDotIndex()
+    DECLARE leftIndex as integer, SET to rightIndex minus size of handle.getProduction().getRight()
+
+    // Make Brothers
+    FOR i FROM leftIndex TO rightIndex - 1
+    CALL setBrother on parseTree.get(i) with parseTree.get(i + 1) as argument
+    END FOR
+
+    // Create father and make connection
+    DECLARE father as new DTE with parentSymbol
+    CALL setFirstSon on father with parseTree.get(leftIndex)
+    FOR i FROM leftIndex TO rightIndex
+    CALL setFather on parseTree.get(i) with father as argument
+    END FOR
+
+    // Erase Children from the parse tree array and put father in their place
+    DECLARE newParseTree as new ArrayList of DTE
+
+    // Copy elements before leftIndex
+    FOR i FROM 0 TO leftIndex - 1
+    ADD parseTree.get(i) to newParseTree
+    END FOR
+
+    // Add father
+    ADD father to newParseTree
+
+    // Copy elements after rightIndex
+    FOR i FROM rightIndex TO parseTree.size() - 1
+    ADD parseTree.get(i) to newParseTree
+    END FOR
+
+    RETURN newParseTree
+    END FUNCTION
+
+\end{codeblock}
+
+\newpage
+
+
+% Parsing and Derivation Tree Building
+\section{Parsing and Derivation Tree Building}\label{sec:Parsing and Derivation Tree Building}
+
+We have arrived at the culmination of this Chapter of the thesis paper. The most exciting part of the process is to parse the source code and in real life test that the foundation theory and the implementation are correct. If you carefully read the book you will notice that the \(DK_{1}\) is the parsing tool for our CFG. The \(DK_{1}\) automaton identifies the handles of the given valid string. If we know the handle of the valid string, we know the reduction step and we will reduce the valid string until we get to the start symbol of the given CFG.\\
+
+For parsing we implement three methods inside the class \(DK_{1}\):  \(\boldsymbol{findHandle}\), \(\boldsymbol{makeReduction}\), and \(\boldsymbol{parseValidString}\).
+
+\vspace{10pt}
+
+% findHandle
+\subsection{\(\boldsymbol{findHandle}\)}
+
+Parameters: \textit{List\(<\)Symbol\(>\) \(\boldsymbol{validStringArray}\).}
+
+Returns: \textit{Item \(\boldsymbol{handle}\)}\\
+
+\textbf{Specification:} \textit{finds and returns the forced handle for the given \(\boldsymbol{validStringArray}\) using the current \(DK_{1}\) automaton.}\\
+
+In order to find the handle for the given valid string we should traverse the \(DK_{1}\) automaton and at some point, we will arrive at the accepting state which will have the handle item representing the upcoming reduction rule.
+
+\vspace{10pt}
+
+\begin{codeblock}[findHandle pseudocode]
+    FUNCTION findHandle(ArrayList of Symbol validStringArray)
+    DECLARE currentState as State, SET to start
+    DECLARE dotIndex as integer, SET to 0
+    DECLARE currentSymbol as Symbol, SET to validStringArray.get(dotIndex)
+
+    WHILE currentState IS NOT NULL
+    // If there are complete items, check if any is the handle
+    IF currentState.getCompleteItems() IS NOT EMPTY THEN
+    DECLARE lookahead as Symbol
+    IF validStringArray.size() > dotIndex THEN
+    SET lookahead to validStringArray.get(dotIndex)
+    ELSE
+    SET lookahead to NULL
+    END IF
+
+    FOR EACH item IN currentState.getCompleteItems()
+    // Continue if lookahead is not null and not in item's lookaheads
+    IF lookahead IS NOT NULL AND NOT item.getLookaheads() CONTAINS lookahead THEN
+    CONTINUE
+    END IF
+
+    RETURN new Item with item's production, dotIndex, and new empty HashSet
+    END FOR
+    END IF
+
+    // Make transition
+    DECLARE madeTransition as boolean, SET to false
+    FOR EACH entry IN currentState.getTransitionFunction().entrySet()
+    DECLARE transitionSymbol as Symbol, SET to entry's key
+    DECLARE transitionState as State, SET to entry's value
+
+    IF transitionSymbol EQUALS currentSymbol THEN
+    INCREMENT dotIndex
+    SET currentState to transitionState
+    IF validStringArray.size() > dotIndex THEN
+    SET currentSymbol to validStringArray.get(dotIndex)
+    ELSE
+    SET currentSymbol to NULL
+    END IF
+
+    SET madeTransition to true
+    BREAK
+    END IF
+    END FOR
+
+    // If no transition was made, return null
+    IF NOT madeTransition THEN
+    RETURN null
+    END IF
+    END WHILE
+
+    RETURN null
+    END FUNCTION
+
+\end{codeblock}
+
+\vspace{20pt}
+
+% makeReduction
+\subsection{\(\boldsymbol{makeReduction}\)}
+
+Parameters: \textit{List\(<\)Symbol\(>\) \(\boldsymbol{validStringArray}\), Item \(\boldsymbol{handle}\).}
+
+Returns: \textit{List\(<\)Symbol\(>\) \(\boldsymbol{updatedValidStringArray}\)}\\
+
+\textbf{Specification:} \textit{makes a reduction step of the valid string based on the provided \(\boldsymbol{handle}\).
+Since we have already identified the handle, we can make a reduction step based on it.
+}\\
+
+\vspace{10pt}
+
+\begin{codeblock}[makeReduction pseudocode]
+    FUNCTION makeReduction(ArrayList of Symbol validStringArray, Item handle)
+    DECLARE handleIndex as integer, SET to handle's dotIndex minus size of handle's production's right side
+
+    // Check if handle is found and make a reduction
+    IF handleIndex IS NOT EQUAL to -1 THEN
+    DECLARE newValidStringArray as new ArrayList of Symbol
+
+    // Add symbols before the handle
+    FOR i FROM 0 TO handleIndex - 1
+    ADD validStringArray.get(i) to newValidStringArray
+    END FOR
+
+    // Add the left side of the handle's production
+    ADD handle.getProduction().getLeft() to newValidStringArray
+
+    // Add symbols after the handle
+    FOR i FROM handleIndex + size of handle's production's right side TO validStringArray.size() - 1
+    ADD validStringArray.get(i) to newValidStringArray
+    END FOR
+
+    RETURN newValidStringArray
+    END IF
+
+    RETURN null
+    END FUNCTION
+
+\end{codeblock}
+
+\vspace{20pt}
+
+% parseValidString
+\subsection{\(\boldsymbol{parseValidString}\)}
+
+Parameters: \textit{String \(\boldsymbol{validString}\).}
+
+Returns: \textit{DTE \(\boldsymbol{derivationTree}\)}\\
+
+\textbf{Specification:} \textit{parses the given input string \(\boldsymbol{validString}\) and returns the respective \(\boldsymbol{DTE}\) element representing the start symbol (root) of the derivation of that \(\boldsymbol{validString}\).}\\
+
+\vspace{10pt}
+
+\begin{codeblock}[parseString pseudocode]
+    FUNCTION parseString(String validString)
+    // Convert the string into an array of symbols
+    DECLARE validStringArray as ArrayList of Symbol, SET to Grammar.stringIntoSymbols with validString, g's terminals, and g's nonterminals
+    SET validStringArray to Grammar.eliminateExtraWhitespace(validStringArray)
+
+    // Initialize the parse tree with symbols from validStringArray
+    DECLARE parseTree as new ArrayList of DTE
+    FOR EACH symbol IN validStringArray
+    ADD new DTE with symbol to parseTree
+    END FOR
+
+    // Parsing Process
+    DECLARE handle as Item
+
+    // Continue parsing until the start symbol of grammar is the first element in validStringArray
+    WHILE NOT validStringArray.get(0) EQUALS g.getStart()
+    SET handle to findHandle with validStringArray
+
+    // Make reduction in the valid string array
+    SET validStringArray to makeReduction with validStringArray and handle
+
+    // Update the parse tree
+    SET parseTree to DTE.updateTheParseTree with parseTree and handle
+    END WHILE
+
+    // Return the root of the parse tree
+    RETURN parseTree.get(0)
+    END FUNCTION
+
+\end{codeblock}
