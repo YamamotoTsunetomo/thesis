@@ -1,4 +1,4 @@
-\chapter{Lexer and Parser}\label{ch:Lexer and Parser}
+\chapter{Lexical Analysis, Language Ambiguity Testing, and Parsing.}\label{ch:Lexer and Parser}
 
 \newpage
 
@@ -275,9 +275,15 @@ Since we already possess the input grammar, we can now test whether that grammar
 % DK1 automaton structure
 \subsection{\(\boldsymbol{DK_{1}}\) automaton structure}
 
+A \( DK_{1} \) is a finite deterministic automaton.
+
 % ----- Image: Example of DK_1 automaton
 
-A \( DK_{1} \) is a finite deterministic automaton.
+\begin{figure}[h!]
+    \includegraphics[width=\linewidth]{DK1 example.png}
+    \caption{}
+    \label{}
+\end{figure}
 
 % Finite deterministic automaton Definition
 \begin{definition}[2.0]
@@ -451,7 +457,13 @@ Returns: \textit{\(\boldsymbol{DK1}\).}\\
 
 The constructor method of the \(DK_{1}\) class creates the entire automaton. As previously emphasized, this is a delicate process. We will thus utilize several auxiliary methods to break down the intricate procedure into more manageable tasks. Below is the formal specification of \(DK_{1}\) building process from the book:\\
 
-% formal building process from Sipser's book.
+% image formal building process from Sipser's book.
+
+\begin{figure}[h!]
+    \includegraphics[width=\linewidth]{DK1 formal specification.png}
+    \caption{}
+    \label{}
+\end{figure}
 
 \vspace{15pt}
 
@@ -626,11 +638,18 @@ The core task of this method is advancing the dot by one symbol to the right. Th
 % DK1 Test
 \section{\(\boldsymbol{DK_{1}}\) Test}\label{sec:DK1 Test}
 
-Having already constructed the \(DK_{1}\) automaton for the input grammar, we are ready to test wheither our grammar belongs to LR(1), or not. For this purpose, we will instantiate the method \(\boldsymbol{dk1Test}\) within the \(\boldsymbol{DK1}\) class.\\
+Having already constructed the \(DK_{1}\) automaton for the input grammar, we are ready to test whether our grammar belongs to LR(1), or not. For this purpose, we will instantiate the method \(\boldsymbol{dk1Test}\) within the \(\boldsymbol{DK1}\) class.\\
 
 The book provides the following formal specification of the \(DK_{1}\) Test:
 
 % Image of formal specification of DK1 test
+
+\begin{figure}[h!]
+    \includegraphics[width=\linewidth]{DK1 test conditions.png}
+    \caption{}
+    \label{}
+\end{figure}
+
 
 \vspace{20pt}
 
@@ -775,6 +794,7 @@ The failure root causes are:
 % updated grammar image
 
 \newpage
+
 
 % Pre-processing for C0 Source Code
 \section{Pre-processing for C0 Source Code}\label{sec:Pre-processing for C0 Source Code}
