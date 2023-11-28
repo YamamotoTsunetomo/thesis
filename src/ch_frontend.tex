@@ -618,6 +618,159 @@ The core task of this function is advancing the dot by one symbol to the right. 
     MAP transitionSymbol to transitionState in transitionFunction
     END FOR
     END FUNCTION
-
-
 \end{codeblock}
+
+\newpage
+
+
+% DK1 Test
+\section{\(\boldsymbol{DK_{1}}\) Test}\label{sec:DK1 Test}
+
+Having already constructed the \(DK_{1}\) automaton for the input grammar, we are ready to test wheither our grammar belongs to LR(1), or not. For this purpose, we will instantiate the method \(\boldsymbol{dk1Test}\) within the \(\boldsymbol{DK1}\) class.\\
+
+The book provides the following formal specification of the \(DK_{1}\) Test:
+
+% Image of formal specification of DK1 test
+
+\vspace{20pt}
+
+% dk1Test
+\subsection*{\(\boldsymbol{dk1Test}\)}
+
+The method \(\boldsymbol{dk1Test}\) iterates through all the states in \(\boldsymbol{DK1.states}\), with the current state referred to as \(\boldsymbol{currentState}\). Within this, another loop iterates over the complete rule items inside \(\boldsymbol{currentState}\), which we will label as \(\boldsymbol{R1}\). Furthermore, another loop iterates through items other than \(\boldsymbol{R1}\), which we designate as \(\boldsymbol{R2}\).\\
+
+Following this, we encounter two cases:
+\begin{itemize}
+    \item \(\boldsymbol{R2}\) represents a complete rule:
+\end{itemize}
+
+We examine if \(\boldsymbol{R1.lookaheads}\) and \(\boldsymbol{R2.lookaheads}\) share a common \(\boldsymbol{Symbol}\) object. If they do, the \(DK_{1}\) Test fails due to condition 1 specified in the book.
+
+\begin{itemize}
+    \item \(\boldsymbol{R2}\) isn't a complete rule:
+\end{itemize}
+
+We determine if \(\boldsymbol{R1.lookaheads}\) contain \(\boldsymbol{R2.currentSymbol()}\) (the symbol positioned after the dot). If this is the case, the \(DK_{1}\) Test fails because of condition 2 as specified in the book.
+
+If all the states pass these checks, then the \(DK_{1}\) Test is deemed successful!\\
+
+\begin{codeblock}[dk1Test pseudocode]
+    FUNCTION dk1Test()
+    // Iterate over each state in the set of states
+    FOR EACH currentState IN states
+    // Iterate over items in the current state
+    FOR EACH R1 IN currentState.getItems()
+    FOR EACH R2 IN currentState.getItems()
+    // Skip incomplete items R1
+    IF NOT R1.isComplete() THEN
+    BREAK
+    END IF
+
+    // Continue if R1 and R2 are the same
+    IF R1 EQUALS R2 THEN
+    CONTINUE
+    END IF
+
+    // Check condition based on whether R2 is complete
+    IF R2.isComplete() THEN
+    // Iterate over lookaheads in R1
+    FOR EACH symbol IN R1.getLookaheads()
+    // Check if symbol is in R2's lookaheads
+    IF R2.getLookaheads() CONTAINS symbol THEN
+    LOG "Failing State Condition_1: ", R1, R2, currentState.toStringOnlyState()
+    RETURN false
+    END IF
+    END FOR
+    ELSE
+    DECLARE currentSymbol as Symbol, SET to R2.currentSymbol()
+
+    // Check if currentSymbol is a lookahead in R1
+    IF R1.getLookaheads() CONTAINS currentSymbol THEN
+    LOG "Failing State Condition_2: ", R1, R2, currentState.toStringOnlyState()
+    RETURN false
+    END IF
+    END IF
+    END FOR
+    END FOR
+    END FOR
+
+    RETURN true
+    END FUNCTION
+\end{codeblock}
+
+\newpage
+
+
+% Analysis and Corrections of C0 Grammar based on DK1 Test
+\section{Analysis and Corrections of C0 Grammar based on \(\boldsymbol{DK_{1}}\) Test}\label{sec:DK1 Test}
+
+Regrettably, the initial C0 grammar (as shown in Table 1.0) doesn’t pass the \(DK1\) Test without a few production rule adjustments.\\
+
+The failure root causes are:
+
+\begin{enumerate}
+    % 1
+    \item A singular lookahead symbol fails to definitively discern between multiplication and pointer dereference symbols \(\ast\). This became evident through the failure triggered by condition 2 in a specific state with these items:
+    \begin{verbatim}
+    R1:     <F> → <id>.      lookaheads:   ||  &&  -  +  /  *  )
+    R2:     <id> → <id>.*    lookaheads:   ||  &&  -  +  /  *  )  [  &  .
+    \end{verbatim}
+    Solution: \\
+    The asterisk symbol \(\ast\) is adjusted to \(\textquotesingle\) for the pointer dereference. Consequently, the modified production is:
+    \begin{verbatim}
+    <id> → <id>'
+    \end{verbatim}
+
+    % 2
+    \item In three production rules the recursion direction has to be adjusted.
+    The test failed by condition 2 at the below state:
+    \begin{verbatim}
+    R1:     <VaDS> → <VaD>.           lookaheads:   ;
+    R2:     <VaDS> → <VaD>.;<VaDS>    lookaheads:   ;
+    \end{verbatim}
+    With the current single lookahead, it’s challenging to conclusively decide on the suitable reduction:
+    \begin{verbatim}
+    <VaDS> ← <VaD>  or  <VaDS> ← <VaD>;<VaDS>
+    \end{verbatim}
+
+    Solution: \\
+    Invert the direction of the recursion for clarity. Instead of the initial production:
+    \begin{verbatim}
+    <VaDS> → <VaD>|<VaD>;<VaDS>
+    \end{verbatim}
+    the revised version is:
+    \begin{verbatim}
+    <VaDS> → <VaD>|<VaDS>;<VaD>
+    \end{verbatim}
+
+    The same adjustment is applied to analogous recursive productions \texttt{<TyDS>}, and \texttt{<StS>}, leading to:
+    \begin{verbatim}
+    <TyDS> → <TyD> | <TyDS>;<TyD>
+    <StS> → <St> | <StS>;<St>
+    \end{verbatim}
+
+    %3
+    \item Type ambiguity between Boolean and Arithmetic variables.
+
+    There’s a failure by condition 2 in a specific state with these items:
+    \begin{verbatim}
+    R1:		<F> → <id>.   lookaheads:   <=  ==  /  >=  > -  < !=  +  *  )
+    R2:		<BF> → <id>.  lookaheads:   ||   &&  )
+    \end{verbatim}
+    Without prior variable type information, deciding on the appropriate reduction, whether
+    \begin{verbatim}
+     <F> ← <id>  or  <BF> ← <id>,
+    \end{verbatim}
+    is problematic.\\
+
+    Solution: \\
+    Implement a distinction in the variable type by replacing the production rule
+    \begin{verbatim}
+    <BF> → <id>  with  <BF> →(bool)<id>
+    \end{verbatim}
+
+    After these adjustments, the grammar is successfully classified as LR(1). Additionally, note that the simultaneous use of \(-\) symbol for unary and binary minus doesn’t introduce ambiguity to the grammar.
+\end{enumerate}
+
+% updated grammar image
+
