@@ -1183,3 +1183,6 @@ Returns: \textit{DTE \(\boldsymbol{derivationTree}\)}\\
     END FUNCTION
 
 \end{codeblock}
+
+
+Notice that in our current approach, we repeatedly search for the handle from the start after each reduction step, resulting in a quadratic implementation. However, by adopting a stack structure and popping only the handle, not the entire valid string, during each reduction, our method becomes linear.
