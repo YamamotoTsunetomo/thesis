@@ -3,23 +3,87 @@ We begin by describing the whole project structure, components for parsing,
 filling the symbol table and code generation.
 
 
-\section{Structure overview}\label{sec:structure-overview}
-UML... (TODO)\\
-Connection between parser and code generator parts is done through derivation tree elements:
-\begin{codeblock}[Derivation tree element]
-    class DTE {
-        Symbol label;
-        DTE father;
-        DTE fson;
-        DTE bro;
+\section{Symbol Table Models}\label{sec:symbol_table_models}
+In this section, we provide definitions for symbol table models, specifically the type table, variable table, and function table.\
+These tables are essential for accessing pertinent program data prior to code generation.
+Example usages include retrieving function parameters by name, searching for struct components, ensuring type safety, calculating displacements etc.
+
+The base models are as follows
+\begin{enumerate}
+    \item \verb+VarType+ - Refers to the variable's type, containing type-specific data such as type class, name,
+    size, struct components, pointer target type and array target type.
+    \item \verb+Variable+ - Stores the variable's name, type (\verb+VarType+) and displacement.
+    \item \verb+Fun+ - Stores the function's name, return type, memory struct (parameters combined with local variables) and the function's body.
+\end{enumerate}
+
+\subsection{VarType}\label{subsec:vartype}
+\textbf{Attributes:}
+\begin{itemize}
+    \item \verb+typeClass: TypeClass+ - an enum indicating whether the type is primitive (int, uint, char, bool) or constructed with
+    a type definition (array, pointer, struct).
+    \item \verb+name: string+ - referring to the type's name.
+    \item \verb+size: int+ - size of the type in bytes.
+    \item \verb+pointerTypeTargetName: string+ - name of the pointer's target type, equals to \verb+null+\\ if \verb+typeClass != POINTER+
+    \item \verb+arrayCompTypeTargetName: string+ - name of the array's component type, equals to \verb+null+ if \verb+typeClass != ARRAY+
+    \item \verb+arraySize: int+ - number of elements of the array, equals to 0 if \verb+typeClass != ARRAY+
+    \item \verb+structComponents: Map<String, Variable>+ - components of the struct, equals to \verb+null+\\ if \verb+typeClass != STRUCT+
+\end{itemize}
+
+\subsection{Variable}\label{subsec:variable}
+\textbf{Attributes:}
+\begin{itemize}
+    \item \verb+name: string+ - The variable's name.
+    \item \verb+type: VarType+ - The variable's type.
+    \item \verb+baseAddress: int+ - In case of global memory struct \verb+gm+, refers to the base pointer BPT,\\ 0 - otherwise.
+    \item \verb+displacement: int+ - Refers to the displacement from the parent memory struct.
+\end{itemize}
+
+\subsection{Fun}\label{subsec:fun}
+\textbf{Attributes:}
+\begin{itemize}
+    \item \verb+name: string+ - The function's name.
+    \item \verb+returnType: VarType+ - Function's return type.
+    \item \verb+memoryStruct: Variable+ - Refers to the variable of type class struct, storing as components the parameters
+    and local variables of the function.
+    \item \verb+numParameters: int+ - needed to differentiate between parameters and local variables in \verb+memoryStruct+
+    \item \verb+body: DTE+ - Subtree of the function's body.
+\end{itemize}
+
+\subsection{Tables}\label{subsec:tables}
+For representing the tables of the aforementioned models, we introduce the following interface:
+\begin{codeblock}[Table]
+    interface Table {
+        void fillTable(DTE content) throws Exception;
     }
 \end{codeblock}
-\newpage
-In the following graph, we give an example tree of the $C0$-subprogram:
-\begin{verbatim}
-    int x; char y
-\end{verbatim}
-\begin{center}
+Respective implementations of the interface are:
+\begin{enumerate}
+    \item \verb+TypeTable+ - contains \verb+Map<String, VarType>+ mapping for the types.
+    Provides simplified methods for creating types and/or adding to type tables by the type class.
+    \item \verb+MemoryTable+ - contains \verb+Map<String, Variable>+ mapping (only for the variables with struct type class).
+    Overridden method \verb+fillTable+ creates global memory struct.
+    \item \verb+FunTable+ - contains \verb+Map<String, Fun>+ mapping.
+\end{enumerate}
+
+
+\section{Adjustments to Derivation Tree Element (DTE) Model}\label{sec:adjustments-to-derivation-tree-element-(dte)-model}
+In the previous chapter, model for the derivation tree element was introduced.
+For the code generation, we extend the class with new methods that help to extract meaningful data from the subtree.
+As an example, we show the derivation of the simple of variable declarations\\ \verb+int x; char y+ (Figure \ref{fig:example_subtree})
+\begin{figure}[h]
+    \begin{codeblock}[Derivation tree element]
+        class DTE {
+            Symbol label;
+            DTE father;
+            DTE fson;
+            DTE bro;
+        }
+    \end{codeblock}\label{fig:figure2}
+
+\end{figure}
+
+\begin{figure}[h]
+    \centering
     \begin{tikzpicture}
         [font=\small,sibling distance =1.5cm, grow'=up, edge from parent/.style={draw=black, thick,->},
         every node/.style={style A}]
@@ -61,17 +125,25 @@ In the following graph, we give an example tree of the $C0$-subprogram:
         \draw[thick, ->] (Ty1)   -- (Na1);
         \draw[thick, ->] (Ty2)   -- (Na2);
     \end{tikzpicture}
-\end{center}
+    \caption{Example subtree}
+    \label{fig:example_subtree}
+\end{figure}
 
-Filling symbol tables and the code generation is done entirely by reading the program
-tree.
-Some of the approaches to shorten the implementation includes flattening the sequence:
+\subsection{Flattened Sequence}\label{subsec:$fseq$}
+The population of symbol tables and subsequent code generation is accomplished by thoroughly parsing the program tree.
+Certain grammar tokens have the corresponding sequence element that has the derivation exemplified by
+\[XS \to X\ |\ XS; X\]
+In the context of symbol definitions, there is $\langle TyDS\rangle, \langle VaDS \rangle$ and $\langle FuDS \rangle$.
+To optimize the input for table models, an array of the respective tree elements is preferred over a singular sequence element.
+To facilitate this, a method for flattening the sequence is introduced.
+\newpage
 \begin{definition}[fseq]
     Let $t = XS$ be a sequence subtree, i.e.
     \[XS \to X \ |\ XS;X\qquad X,XS\in N\]
     Then the flattened sequence of the subtree is given by
     \[fseq(t) = \left[X_1,\dots,X_k\right]\]
     where $k$ is the amount of derived $X$ non-terminals in the tree.
+    Algorithm is implemented in the following way:
 \end{definition}
 
 \begin{codeblock}[Flattened sequence]
@@ -93,9 +165,12 @@ possible derivations of $xs$:
     Flattened sequence is recursively obtained for \verb+xs.fson+, to which \verb+xs.fson.bro.bro+ is appended
     (Corresponding to $X$ in the derivation)
 \end{itemize}
+Working with example from \ref{fig:example_subtree}, we have
+\[fseq(VaDS) = [VaD(\verb+int+, \verb+x+), VaD(\verb+char+, \verb+y+)]\]
 
-When reading name non-terminals (\verb+Na+), one needs to concatenate the labels of the leaves of the subtree, for
-getting the initial string.
+\subsection{Border Word}\label{subsec:border-word}
+Symbol table entries have string values as keys, extracting the name from the respective symbol definition/declaration
+requires traversing and concatenating the labels of the leaves of the subtree \verb+<Na>+.
 For this purpose, function getting the border word of the subtree is used:
 \begin{definition}[bw]
     Let $x \in N \cup T$ be a root for the program subtree.
@@ -106,7 +181,8 @@ For this purpose, function getting the border word of the subtree is used:
                            bw(\verb+x.fson+)\circ \bigcirc_{i=1}^k bw(\verb+x.bro+_i)&\quad x\in N
         \end{cases}
     \]
-    where $k$ is the number of siblings of \verb+x.fson+
+    where $k$ is the number of siblings of \verb+x.fson+\\
+    Algorithm:
 \end{definition}
 \begin{codeblock}[Border word]
     input: derivation tree element x.
@@ -124,6 +200,7 @@ For this purpose, function getting the border word of the subtree is used:
     }
 \end{codeblock}
 
+\subsection{Extract Component Pairs}\label{subsec:extract-component-pairs}
 The most boilerplate is produced at the stage of filling the symbol tables, especially
 at handling the sequences of pair components, i.e.
 \[ XS \to XS; X\ |\ X\qquad XS,X \in N\qquad A,B\in N\cup T\]
@@ -168,9 +245,45 @@ into the following algorithm:
         return result
     }
 \end{codeblock}
+Aforementioned function, for the example from Figure~\ref{fig:example_subtree} would return
+\[extrCompPairs(VaDS) = [["int", "x"], ["char", "y"]]\]
+
+
+\section{Filling The Symbol Tables}\label{sec:using-new-tools-for-filling-the-symbol-tables}
+In this section, we present a comprehensive overview of the symbol table filling process, leveraging the predefined models and algorithms.
+Our approach is guided by the following strategies:
+\begin{enumerate}
+    \item Type tables:
+    \begin{itemize}
+        \item Arrays: The array type must be either primitive or defined beforehand.
+        Additionally, the array size is validated for correctness, and the new type name should not already exist in the type table.
+
+        \item Structs: Same constraints apply to each component of the structure.
+        \item Pointers: It is not required for the pointer target type to be defined previously.
+        For that reason, \verb+VarType+ model stores only the name of the target, obtaining the type instance
+        requires a lookup in the table.
+    \end{itemize}
+    \item Global variable tables:
+    \begin{itemize}
+        \item Variable names should be distinct.
+        \item Types should be either primitive, or previously defined.
+    \end{itemize}
+    \item Function tables:
+    \begin{itemize}
+        \item Names should be distinct (in this version, we do not account for signatures.
+        Thus, function overloading is not allowed).
+        \item Return types should be primitive or defined previously.
+        \item Parameters and local variables follow the same constraints as global variables.
+    \end{itemize}
+\end{enumerate}
 \newpage
-Now we show the whole compilation process
-\begin{center}
+General overview of the compilation process is shown in Figure~\ref{fig:c0_comp}.
+The program tree derives 3 sequence tokens \verb+<TyDS>+, \verb+<VaDS+ and \verb+FuDS+.
+Subsequently, the corresponding tables are populated.
+Once completed, the body of the main function is extracted from the function table.
+For each statement within the main function, assembly code is then generated.
+\begin{figure}[h]
+    \centering
     \begin{tikzpicture}
         [font=\small,sibling distance =1.5cm, level distance=3cm, grow'=right, edge from parent/.style={draw=black, thick,->},
         level 4/.style={level distance=3cm},
@@ -211,11 +324,15 @@ Now we show the whole compilation process
             }
         };
 
-    \end{tikzpicture}
-\end{center}
-\newpage
-Filling the type table
-\begin{center}
+    \end{tikzpicture}\caption{C0 Program Compilation Process}
+    \label{fig:c0_comp}
+\end{figure}
+
+\subsection{Filling the type table}\label{subsec:filling-the-type-table}
+Filling the type table from the \verb+<TyDS>+ token involves flattening the sequence and reading each
+type definition separately (Figure~\ref{fig:fill_tt}).
+\begin{figure}[h]
+    \centering
     \begin{tikzpicture}
         [font=\small,sibling distance =1.5cm, level distance=3cm, grow'=right, edge from parent/.style={draw=black, thick,->},
         level 3/.style={level distance=1.2cm},
@@ -239,10 +356,13 @@ Filling the type table
 
         \draw[thick, ->] (box)  -- (readTyD);
         \draw[thick, ->] (fseq)  -- (box);
-    \end{tikzpicture}
-\end{center}
-
-\begin{codeblock}
+    \end{tikzpicture}\caption{Filling the type table}
+    \label{fig:fill_tt}
+\end{figure}
+\newpage
+Each time a derivation tree element is processed, the corresponding pattern matching function ensures
+that the passed argument satisfies the required label, as exemplified below.
+\begin{codeblock}[fillTypeTable]
     input: DTE tyds - tree element of type TyDS,
     output: none
     effect: fills the table with new types
@@ -252,9 +372,22 @@ Filling the type table
         for all element tyD in fseq(tyds) -> readTyD(tyD);
     }
 \end{codeblock}
-\newpage
-reading type definition
-\begin{center}
+Next step involves implementing \verb+readTyD+.
+Given the derivation for \verb+TyD+ tokens, as shown in\\ Figure~\ref{fig:tyd}, uniqueness of the type's name is checked as
+\begin{codeblock}
+    checkUnique(DTE tyD) {
+        nameToken := tyD.fson.bro.bro
+        name := bw(nameToken)
+        if TypeTable.containsType(name) -> { error }
+    }
+\end{codeblock}
+Subsequently, we perform a case split based on the kind of the
+type expression, illustrated in Figure~\ref{fig:readTyD}.
+The \verb+struct+ keyword identifies the struct class, the asterisk at the end indicates a pointer, and opening square brackets denote arrays.
+These key distinctions are crucial, as the actual implementation (unlike the representation in Figure~\ref{fig:readTyD}) relies on pattern matching solely based on these differences.
+Consequently, visiting the first two children of the type expression subtree is sufficient.
+\begin{figure}[h]
+    \centering
     \begin{tikzpicture}
         [font=\small, level distance=2cm, grow'=up, edge from parent/.style={draw=black, thick,->},
         level 2/.style={grow'=right}]
@@ -268,10 +401,12 @@ reading type definition
             }
         };
 
-    \end{tikzpicture}
-\end{center}
+    \end{tikzpicture}\caption{Derivation of the type definition}
+    \label{fig:tyd}
+\end{figure}
 
-\begin{center}
+\begin{figure}[h]
+    \centering
     \begin{tikzpicture}
         [font=\small, level distance=2cm, grow'=right, edge from parent/.style={draw=black, thick,->},
         level 2/.style={grow'=right, level distance=1.1cm}]
@@ -316,12 +451,30 @@ reading type definition
         \draw[dotted,thick, ->] (te)  -- (ty1);
         \draw[dotted,thick, ->] (te)  -- (ty2);
         \draw[dotted,thick, ->] (te)  -- (struct);
-    \end{tikzpicture}
-\end{center}
+    \end{tikzpicture}\caption{Reading the type definition}
+    \label{fig:readTyD}
+\end{figure}
 
 \newpage
-Adding array type
-\begin{center}
+
+\subsubsection{Adding array type}
+Figure~\ref{fig:addArray} illustrates the process of adding an array type to the type table.
+Initially, the \verb+<Ty>+ type is checked for being primitive or defined previously.
+This is achieved by extracting the type name from the border word of the type token and searching for the corresponding \verb+VarType+ entry in the type table.
+\begin{codeblock}
+    checkDefined(DTE ty) -> bool {
+        name := bw(ty)
+        return TypeTable.containsType(ty)
+    }
+\end{codeblock}
+The subsequent step involves verifying the non-negativity of array's length.
+Any failure in these checks results in an error.
+Upon passing the check, the array's target type is obtained from the corresponding entry in the type table.
+The array's size is extracted from the parsed \verb+<DiS>+ token, and name is the border word of \verb+<Na>+.
+The resulting record is then added to the type table.
+
+\begin{figure}[h]
+    \centering
     \begin{tikzpicture}
         [font=\small, level distance=3.1cm, grow'=right, edge from parent/.style={draw=black, thick,->},
         level 2/.style={grow'=right, level distance=1.1cm}]
@@ -354,11 +507,24 @@ name := bw(na)
         \draw[thick, ->] (dis) .. controls (4,-4) .. node[midway, right] {dis} (valid);
         \draw[thick, ->] (valid) -- node[right] {\tiny true} (done);
         \draw[thick, ->] (done) -- node[right] {\tiny result} (addToTT);
-    \end{tikzpicture}
-\end{center}
+    \end{tikzpicture}\caption{Adding array type}
+    \label{fig:addArray}
+\end{figure}
 \newpage
-Adding pointer type
-\begin{center}
+
+\subsubsection{Adding Pointer Type}
+As described in the beginning, strategy for adding the pointers doesn't require the target type to be defined
+previously, thus possibly resulting in a NULL-type pointer (initially).
+Actual access for the target type involves lookups in the type table:
+\begin{codeblock}
+    getPointerTargetType() -> VarType {
+        type := TypeTable.getTypeOrNull(ptrTargetTyName)
+        if type == null -> { error }
+        return type
+    }
+\end{codeblock}
+\begin{figure}[h]
+    \centering
     \begin{tikzpicture}
         [font=\small, level distance=2.1cm, grow'=down, edge from parent/.style={draw=black, thick,->},]
         \node[style A] (done) {
@@ -369,11 +535,45 @@ name := bw(na);
             \end{minipage}
         }
         child { node[style B] {addToTypeTable}};
-    \end{tikzpicture}
-\end{center}
+    \end{tikzpicture}\caption{Adding pointer type}
+    \label{fig:addPointer}
+\end{figure}
 
-Adding Struct type
-\begin{center}
+\subsubsection{Adding Struct type}
+In Figure~\ref{fig:addStruct}, the checking process for structs components is illustrated.
+Similar to arrays, the type being primitive or defined previously is verified using the same checker function.
+However, uniqueness of the names is required within the components.
+To address this, a set is initialized and updated within the loop.
+Additionally, inside the loop, displacement is accumulated, satisfying the formula
+\[ displ(comp_i, struct) = ba(struct) + \sum_{j=0}^{i-1}size(comp_j)\]
+At the end of the loop, the displacement variable represents the sum of the sizes of all components,
+equivalent to the size of the entire struct, which is then assigned to the respective attribute.
+After passing the name, size and components to the struct type builder, new instance of the \verb+VarType+
+is added to the type table.
+\newpage
+\begin{codeblock}
+    ...
+    components := fseq(VaDS)
+    compNames := emptySet()
+    strComps := Map<String, Variable>()
+    displacement := 0
+    for all comp in components -> {
+        ty := comp.fson
+        na := comp.fson.bro
+
+        checkDefined(ty)
+        if compNames.contains(na) -> { error }
+        compNames.add(na)
+
+        type := TypeTable.getType(bw(ty))
+        strComps.put(na, new Variable(na, 0, type, displacement))
+        displacement += size(type)
+    }
+    structType := structBuilder.setName(bw(Na)).setSize(displacement).setComps(strComps).build()
+    TypeTable.addType(structType)
+\end{codeblock}
+\begin{figure}[h]
+    \centering
     \begin{tikzpicture}
         [font=\small, level distance=1.5cm, grow'=right, edge from parent/.style={draw=black, thick,->},
         level 2/.style={grow'=right, level distance=1.5cm}]
@@ -410,32 +610,42 @@ name := bw(na)
         \draw[thick, ->] (check) -- node[midway, above] {false} (err);
         \draw[thick, ->] (check) -- node[midway, right] {all true} (code);
         \draw[thick, ->] (code) -- (addToTT);
-    \end{tikzpicture}
-\end{center}
+    \end{tikzpicture}\caption{Adding Struct type}
+    \label{fig:addStruct}
+\end{figure}
 \newpage
-Filling memory table
 
+\subsection{Filling memory table}\label{subsec:filling-memory-table}
 Since variable scopes are decided to be stored inside a struct, we treat global
 variable declaration sequence \textbf{almost} as a type definition of form:
-\begin{codeblock}[Global variables]
+
+\begin{codeblock}
     typedef struct { VaDS } $gm;
 \end{codeblock}
 Single difference from a regular type definition is, that the newly created type
 is not added to the type table, otherwise the following code would be a valid c0 program:
 \begin{codeblock}
-int a;
-bool b;
-char c;
-int main() {
-    $gm k;
-    ...
-    k.b = true;
-    return k.a
+    int a;
+    bool b;
+    char c;
+    int main() {
+        $gm k;
+...
+k.b = true;
+return k.a
 }
 \end{codeblock}
-\newpage
-Filling the function table
-\begin{center}
+Therefore, we're employing the modified function for adding the struct types:
+\begin{codeblock}
+...
+structType := structBuilder.setName(bw(Na)).setSize(displacement).setComps(strComps).build()
+return structType // just creating and returning, without adding to the type table
+\end{codeblock}
+\subsection{Filling the function table}
+Approach is similar to the type tables, as shown in Figure~\ref{fig:fillFT}, function definitions are flattened and
+read separately.
+\begin{figure}[h]
+\centering
 \begin{tikzpicture}
 [font=\small,sibling distance =1.5cm, level distance=3cm, grow'=right, edge from parent/.style={draw=black, thick,->},
 level 3/.style={level distance=1.2cm},
@@ -460,10 +670,37 @@ node[style A] (tydn) {FuDn} edge from parent[draw=none]
 \draw[thick, ->] (box)  -- (readTyD);
 \draw[thick, ->] (fseq)  -- (box);
 \end{tikzpicture}
-\end{center}
+\caption{Filling the function table}
+\label{fig:fillFT}
+\end{figure}
 
-Reading FuD
-\begin{center}
+\newpage
+As in the previous parts, type is verified to be either primitive or defined previously. Upon success, return
+type is stored:
+\begin{codeblock}
+ty := bw(Ty)
+checkDefined(ty)
+returnType = TypeTable.getType(ty)
+\end{codeblock}
+function name is checked for uniqueness and the respective attribute assigned:
+\begin{codeblock}
+na := bw(Na)
+if FunctionTable.containsFunction(na) -> { error }
+name := na
+\end{codeblock}
+A local memory struct is generated by merging the sequences of parameters and local variables.
+Initially, the number of parameters is stored. As shown in Figure~\ref{fig:readFuD},
+\verb+<PaDS>+ and \verb+<VaDS>+ are flattened and combined into a single list. Under the hood, component pairs
+are extracted and forwarded to the struct builder (Utilizing the builder pattern for constructing \verb+VarType+ instances,
+the project's source code provides a reference for this implementation).
+\begin{codeblock}
+componentPairs := extractCompPairs(PaDS)
+componentPairs.addAll(extractCompPairs(VaDS))
+structBuilder.setCompPairs(componentPairs)
+... // same logic follows, as in creation of the global memory struct
+\end{codeblock}
+\begin{figure}[h]
+\centering
 \begin{tikzpicture}
 [font=\small,sibling distance =1.5cm, level distance=1.5cm, grow'=right, edge from parent/.style={draw=black, thick,->}]
 
@@ -544,47 +781,101 @@ node[style A] (rcb) {\}}
 \draw[thick, ->] (box) -- (struct);
 \draw[thick, ->] (body) -- (addbody);
 \end{tikzpicture}
-\end{center}
-\newpage
-Helper components\\
-Pebble game naive approach:\\
-simple pointer of the first free register, occuping register increments the pointer,
-freeing - decrements.\\
-This approach does not work, failing example is inline assembly portions
-\begin{codeblock}[Inline assembly]
+\caption{Reading function definition}
+\label{fig:readFuD}
+\end{figure}
+In the final step, a new function entry is added to the table. With the symbol tables now filled, we proceed to the implementation
+of code generation.
+
+\section{Helper Components for Code Generation}\label{sec:helpers}
+In the upcoming section, we lay the groundwork for our code generation process by introducing crucial
+helper components. Among these, we delve into the assignment of registers using pebble game. Furthermore, we
+introduce the \verb+FunctionCall+ class, designed to streamline the management of function calls. This class stores
+essential information such as the function, recursion depth, and displacement from the base pointer. Besides the practical
+purpose, \verb+FunctionCall+ enables convenient debugging. Additionally, the \verb+Configuration+ class is implemented, that
+not only manages the stack of function calls, but also provides access to the current function and incorporates the pebble game
+logic, including acquiring free registers and releasing them when needed. Finally, we introduce new record \verb+VarReg+, which is
+simply a data class containing the variable, type and the register. Later on, storing the register inside a record enables
+dividing the code generation parts by context and allows working with repeating patterns recursively.
+\subsection{Integrating Pebble Game}
+Referencing the Sethi-Ulman algorithm described in the book, we align the pebble game moves with the state of registers in the statement,
+as outlined below:
+\begin{itemize}
+    \item A register is considered occupied when a pebble is placed on a corresponding node.
+    \item Moving the pebble doesn't alter the number of free registers, an occupied register is retained.
+    \item Removing the pebble from the node releases the associated register, rendering it available.
+    \item All registers are freed in the end of the statement.
+\end{itemize}
+Therefore, a register is assigned for the expression node, it is released either when the statement is completed, or after
+the binary operation if the respective pebble, associated with one of the operands, is removed from the node, i.e. is not
+storing the result of the operation. Given that, one concludes the first variant of the pebble game implementation:
+\subsubsection{Pebble Game Naive Approach}
+Key idea is to employ a straightforward pointer to the first available register, occupying the register is followed by the increment of the pointer,
+releasing triggers the decrement.
+\begin{codeblock}
+int registerPointer := 1; // first free register
+
+getFreeReg() -> int {
+    if registerPointer >= MAX_AVAILABLE -> { error }
+    registerPointer := registerPointer + 1
+    return registerPointer - 1
+}
+
+releaseReg() {
+    registerPointer = min(1, registerPointer - 1)
+}
+\end{codeblock}
+Although this implementation satisfies the current grammar, the naive approach does not work for the extended grammar
+with inline assembly portions:
+\begin{codeblock}
 gpr(j) = e { J };
 e = gpr(j) { J };
+// J is the set of registers that are restricted to change
 \end{codeblock}
-Workaround is to use simple boolean array indicating occupied registers,\\
-getting the register becomes an operation of getting first one and setting zero.
+Simple repeated incrementing will work while evaluating inline assembly statements, although releasing the
+registers will result in a single decrement, leaving out a range of available registers out of scope.
+
+\subsubsection{Pebble Game With Boolean Arrays}
+Workaround is to use a boolean array, with each item indicating the availability of the register
+with the respective index. Getting the register becomes an operation of getting first one and setting zero,
+releasing - setting one. This approach works for inline assembly portions as well, since it suffices to make
+each register from set \verb+J+ unavailable during the statement.
 \begin{codeblock}[Pebble game]
-registers = new boolean[32];
+registers = new boolean[MAX_AVAILABLE];
 ...
-int reg = f1(registers);
-registers[reg - 1] = false; // since reg is occupied
+int reg = f1(registers); // getting first one
+registers[reg - 1] = false; // occupying while in use
 ...
-registers[reg - 1] = true; // freeing the reg
+registers[reg - 1] = true; // releasing the register
 \end{codeblock}
-It is important to keep track of the current function (for variable binding). We define a record for this purpose,
-along with configuration class, which will store the stack of the calls and logic for the pebble game.
-\begin{codeblock}[Helper components]
+\subsection{Configuration Class}
+It is important to keep track of the current function (for variable binding). For debugging, it's also helpful to
+store the recursion depth and the displacement of each call. We define a record for this purpose
+\begin{codeblock}[Function call]
 class FunctionCall {
     Fun function;
     int rd;
     int displacement; // from bpt
 }
-
+\end{codeblock}
+We're combining the function call stack and pebble game logic into Configuration class.
+\begin{codeblock}
 class Configuration {
-    boolean[] registers; // for pebble game
-    Stack<FunctionCall> stack;
+boolean[] registers; // for pebble game
+Stack<FunctionCall> stack;
 
-    Fun currentFunction () { ... }
-    void pop() { ... }
-    int getRegister() { ... }
-    void freeRegister(int reg) { ... }
-
+Fun currentFunction () { ... }
+void pop() { ... }
+int getRegister() { ... }
+void freeRegister(int reg) { ... }
 }
 \end{codeblock}
+\newpage
+\subsection{VarReg}
+Considering the tree structure of the program, it is convenient to employ recursive traversal algorithms in the code generation.
+Moreover, by itself, code generation entails only adding the handler functions for the respective tree patterns. However, this
+approach needs to be integrated with the current implementation of the pebble game and, given the recursive structures, it's vital
+to keep track of the registers of the corresponding values.
 \newpage
 Code generation part itself includes only adding the handler functions for the respective
 tree patterns. For simplicity, these are grouped into classes by context and purpose.
@@ -605,35 +896,403 @@ input: Fun main function
 output: Instruction[] generated assembly instructions
 
 generateCode(Fun main) -> Instruction[] {
-    FunctionTable.checkMainDefined(main);
-    createFunctionCall(main);
+FunctionTable.checkMainDefined(main);
+createFunctionCall(main);
 
-    statements := fseq(main.getSts());
-    for all element st in statements -> {
-        evaluateSt(st);
-        Config.freeAllRegisters();
-    }
-    return CodeGenerator.instructions;
+statements := fseq(main.getSts());
+for all element st in statements -> {
+evaluateSt(st);
+Config.freeAllRegisters();
+}
+return CodeGenerator.instructions;
 }
 \end{codeblock}
 \newpage
 \begin{center}
-    \begin{tikzpicture}
-    [font=\small,sibling distance =1.5cm, level distance=1.5cm, grow'=right, edge from parent/.style={draw=black, thick,->}]
+\begin{tikzpicture}
+[font=\small,sibling distance =1.5cm, level distance=1.5cm, grow'=right, edge from parent/.style={draw=black, thick,->},
+level 3/.style={level distance=1cm},
+level 4/.style={level distance=3cm}]
 
-    \node [style A] (st) {St}
-    child {
-        node [style A] (id) {Id}
-        child {
-            node [style A] (eq) {=}
-            child { node[style A] (dots) {$\dots$}
-                child { node[style B] (assignment) {generateAssignment}}
-            }
-        }
-    }
-    child { node [style A] (while) {while} }
-    child { node [style A] (if) {if} };
+\node [style A] (st) {St}
+child {
+node [style A] (id) {Id}
+child {
+node [style A] (eq) {=}
+child { node[draw=none] (dots) {$\dots$} edge from parent[draw=none]
+child { node[style B] (assignment) {generateAssignment}}
+}
+}
+}
+child {
+node [style A] (while) {while}
+child {
+node [draw=none] (eq) {$\dots$}
+child { node[draw=none] (dots) {$\dots$} edge from parent[draw=none]
+child { node[style B] (loop) {generateLoop}}
+}
+}
+}
+child {
+node [style A] (if) {if}
+child {
+node [draw=none] (eq) {$\dots$}
+child { node[draw=none] (dots) {$\dots$} edge from parent[draw=none]
+child {node[style B] (conditional) {generateConditional}}}
+}
+};
 
-    \end{tikzpicture}
+\end{tikzpicture}
+\end{center}
+\newpage
+\begin{center}
+\begin{tikzpicture}
+[font=\small,sibling distance =1.5cm, level distance=1.5cm, grow'=right, edge from parent/.style={draw=black, thick,->}]
+\node[style A] (id) {Id}
+child {
+node [style A] (eq) {=} child { node[style A] (x) {X}}
+};
+
+\node[style B] at (0, -1.5) (evaluateId) {\verb+evaluateId+};
+\node[style A] at (0, -3) (varRegId) {\verb+varRegId+};
+\node[style B] at (3, -1.5) (getValue) {\verb+getValue+};
+\node[style A] at (3, -3) (varRegValue) {\verb+varRegValue+};
+\node[style B, minimum width=3cm] at (1.5, -4.5) (check) {\verb+checkTypesSame+};
+\node[style D] at (4.5, -4.5) (error) {Error};
+\node[style A] at (1.5, -6) (instr) {add instr: \verb+sw $varRegValue.reg $varRegId.reg 0+};
+
+\draw[thick, ->] (id) -- (evaluateId);
+\draw[thick, ->] (x) -- (getValue);
+\draw[thick, ->] (evaluateId) -- (varRegId);
+\draw[thick, ->] (getValue) -- (varRegValue);
+\draw[thick, ->] (varRegId) -- (check);
+\draw[thick, ->] (varRegValue) -- (check);
+\draw[thick, ->] (check) -- node[midway, below] {\tiny false} (error);
+\draw[thick, ->] (check) -- node[midway, right] {\tiny true} (instr);
+\end{tikzpicture}
+\end{center}
+\begin{codeblock}[evaluateId]
+input: DTE id, bool lv (checks if additional dereference is required)
+output: VarReg result - bound identificator
+
+evaluateId(DTE id, bool lv) -> VarReg {
+res := bindVariable(id)
+if (id.children is not <id>& and !lv) {
+add new instruction [lw $res.reg $res.reg 0] // dereference
+}
+return res
+}
+\end{codeblock}
+
+\newpage
+\begin{codeblock}[bindVariable]
+input: DTE id
+output: VarReg result
+
+bindVariable(DTE id) -> VarReg {
+case id.children is <Na> -> {
+return bindName(id.fson)
+}
+
+case id.children is <id>.<Na> -> {
+structVar := evaluateId(id.fson)
+
+compName := bw(id.fson.bro.bro)
+structComp := getComponent(structVar.type, compName)
+j := structVar.j and d := displ(structComp, structVar.var)
+add new instruction [addi $j $j d]
+return structComp
+}
+
+case id.children is <id>[... -> return bindArrElement(id)
+case id.children is <id>* -> {
+res := evaluateId(id.fson)
+add new instruction [lw $res.reg $res.reg 0] // deref
+return res
+}
+case id.children is <id>& -> {
+return bindName(id.fson)
+}
+}
+\end{codeblock}
+
+\newpage
+\begin{codeblock}[bindName]
+input: DTE na - name tree element
+output: VarReg res - bound variable
+
+bindName(DTE na) -> VarReg {
+cf := Configuration.currentFunction
+cfms := cf.memoryStruct
+
+case bw(na) is in cfms -> { // bind local variable from the cf
+comp := gm.getComponent(bw(na))
+reg := Configuration.getFreeReg() // pebble game
+add new instruction [addi $reg $spt displ(comp, cf) - size(cf)]
+return new VarReg(reg, comp)
+}
+otherwise -> { // bind global variable
+memory := MemoryTable.gm
+comp := gm.getComponent(bw(na)) // Variable or null
+if comp is null -> { error } // not in gm
+
+reg := Configuration.getFreeReg() // pebble game
+add new instruction [addi $reg $bpt displ(comp, memory)]
+return new VarReg(reg, comp)
+}
+}
+\end{codeblock}
+
+\begin{codeblock}[getValue]
+input: DTE x - tree element representing assigned value
+output: VarReg varRegValue - bound value
+
+getValue(DTE x) -> VarReg {
+case x.children is <E> -> return evaluateExpr(x.fson)
+case x.children is <BE> -> return evaluateBE(x.fson)
+case x.children is <CC> -> return evaluateCharConst(x.fson)
+case x.children is new <Na>* -> return evaluateAlloc(x.fson.bro)
+case x.children is <Na>(... -> return funCall(x)
+otherwise -> error // grammar error
+}
+\end{codeblock}
+
+\newpage
+\begin{codeblock}[evaluateExpr]
+input: DTE e - expression tree element
+output: VarReg res - bound value and register of the expression
+
+evaluateExpr(DTE e) -> VarReg {
+case size(e.children) is 3 -> {
+case e.children is (<F>) -> evaluateExpr(e.fson.bro)
+otherwise -> {
+firstOperand := e.fson
+operator := firstOperand.bro
+secondOperand := operator.bro
+evalBinaryOperation(firstOperand, operator, secondOperand)
+}
+}
+case size(e.children) is 2 -> {
+f := evaluateExpr(e.fson.bro)
+add new instruction [ sub $f.reg 0 $f.reg ]
+return f
+}
+case size(e.children) is 1 -> {
+case e.fson is <T> or <F> -> evaluateExpr(e.fson)
+case e.fson is <id> -> evaluateId(e.fson, false)
+case e.fson is <C> -> evaluateConst(e.fson)
+}
+otherwise -> error
+}
+\end{codeblock}
+
+\newpage
+\begin{codeblock}[evaluateAlloc]
+input: DTE x - tree element deriving new <Na>*
+output: new heap entry gets allocated, heap pointer increased.
+
+evaluateAlloc(DTE x) {
+add new instruction [ sw $hpt $varRegId.reg 0 ]
+MemoryHelper.increaseHPT(size(varRegId.var))
+}
+\end{codeblock}
+
+\begin{codeblock}[funCall]
+input: DTE x - tree element deriving <Na> (<PaS>) {...
+output: new function call gets created, stack pointer increased
+
+funCall(x) {
+name := x.fson
+function := FunTable.getFunction(name)
+MemoryHelper.increaseSPT(size(function))
+
+if x.nthSon(3) is <PaS> {
+funMemory = function.getMemoryStruct()
+for all i = 0,1,... size(x.nthSon(3)) - 1 -> {
+VarReg p := evalPa(x.nthSon(3)[i]) // pa -> <E>|<BE>|<CC>
+Variable strParam := funMemory.at(i)
+
+imm := -size(function) + displ(function, strParam)
+add new instruction [ sw $p.reg $spt imm ]
+Configuration.freeRegister(p.reg) // rm node from pebble
+}
+}
+
+mwo := size(function.localVariables)
+reg1, reg2 := Configuration.getFreeRegisters()
+firstLocal := function.localVariables[0]
+
+add new instruction [ add $reg1 $spt displ(function, firstLocal) ]
+add new instruction [ addi $reg2 $0 mwo ]
+add new instruction [ zero(reg1, reg2) ]
+Configuration.freeRegisters(reg1, reg2)
+
+initRDS()
+add new instruction [ jal $function.label ]
+call := createFunctionCall(function)
+generateCodeForCall(call)
+}
+
+\end{codeblock}
+
+\newpage
+\begin{codeblock}[genereateCodeForCall]
+input: FunctionCall call - current function call
+output: generated code is added to the main list
+
+generateCodeForCall(FunctionCall call) {
+reg := Configuration.getFreeReg()
+add new instruction [ sw $RA $reg 0 ]
+Configuration.freeRegister(reg)
+
+body := call.function.getBody()
+// body -> StS ; RSt
+if body.fson is <StS> {
+statements = fseq(body.fson)
+for all st in statements -> { evalSt(st) } // already shown
+body = body.bro.bro // moving pointer to RSt
+}
+
+// RSt = return X, X = <E>|<BE>|<CC>
+res := evaluateResult(body.fson.bro)
+rdsReg := bind(function.rds)
+add new instruction [ sw $res.reg $rdsReg 0]
+if Configuration.currentFunction is "main" -> { HALT program }
+
+add new instruction [ lw $1 $spt -(size(function) - 4)]
+add new instruction [ addi $spt $spt -(size(function) - 4)]
+add new instruction [ jr $1 ]
+}
+\end{codeblock}
+
+\newpage
+Loop
+\begin{center}
+\begin{tikzpicture}
+[font=\small,sibling distance =1.5cm, level distance=1.5cm, grow'=right, edge from parent/.style={draw=black, thick,->}]
+\node[style A] (while) {\verb+while+}
+child {
+node[style A] (be) {BE}
+child {
+node[style A] (lcb) {\{}
+child {
+node[style A] (sts) {StS} child { node[style A] (rcb) {\}}}
+}
+}
+};
+
+\node[style B] at (1.5, -2) (evalBE) {\verb+evalBE+};
+\node[style B] at (4.5, -2) (fseq) {\verb+fseq+};
+\node[style B] at (7, -2) (evalSt) {\verb+evalSt+};
+\node[draw=none] at (7.5, -2.7) (afterSts) {save afterSts};
+\node[style A] at (1.5, -4) (bres) {\verb+bRes: VarReg+};
+\node[style A] at (2, -6) (finstr) {instr: \verb_beqz $bRes.reg (bodySize + 2)_};
+\node[style A] at (2, -8) (sinstr) {instr: \verb_blez $0 - (BESize + bodySize + 1)_};
+\node[style A, minimum height=5cm, minimum width=5cm] at (10, -6) (box) {};
+\node[draw=none] at (10,-3.7) (pinstr) {program instructions};
+\node[draw=none] at (10, -4.25) (dots) {$\dots$};
+\node[style A] at (10, -5) (beBody) {\verb_BE_ evaluation};
+\node[draw=none] at (9, -6) (fjump) {};
+\node[draw=none] at (9, -8) (sjump) {};
+\node[style A] at (10, -7) (whileBody) {\verb_while_ body evaluation};
+
+\draw[thick, ->] (be) -- node[midway,left] {\small save beforeBE} (evalBE);
+\draw[thick, ->] (sts) -- node[midway, right] {\small save beforeStS} (fseq);
+\draw[thick, ->] (fseq) -- node[midway, below] {\tiny for each} (evalSt);
+\draw[thick, ->] (evalBE) -- node[midway, left] {\small save afterBE} (bres);
+\draw[thick, ->] (finstr) -- (fjump);
+\draw[thick, ->] (sinstr) -- (sjump);
+\end{tikzpicture}
 \end{center}
 
+\newpage
+If conditional
+\begin{center}
+\begin{tikzpicture}
+[font=\small,sibling distance =1.5cm, level distance=1.5cm, grow'=right, edge from parent/.style={draw=black, thick,->}]
+\node[style A] (while) {\verb+if+}
+child {
+node[style A] (be) {BE}
+child {
+node[style A] (lcb) {\{}
+child {
+node[style A] (sts) {StS} child { node[style A] (rcb) {\}}}
+}
+}
+};
+
+\node[style B] at (1.5, -2) (evalBE) {\verb+evalBE+};
+\node[style B] at (4.5, -2) (fseq) {\verb+fseq+};
+\node[style B] at (7, -2) (evalSt) {\verb+evalSt+};
+\node[draw=none] at (7.5, -2.7) (afterSts) {save afterSts};
+\node[style A] at (1.5, -4) (bres) {\verb+bRes: VarReg+};
+\node[style A] at (2, -6) (finstr) {instr: \verb_beqz $bRes.reg (ifSize + 1)_};
+\node[style A, minimum height=5cm, minimum width=5cm] at (10, -6) (box) {};
+\node[draw=none] at (10,-3.7) (pinstr) {program instructions};
+\node[draw=none] at (10, -4.25) (dots) {$\dots$};
+\node[style A] at (10, -5) (beBody) {\verb_BE_ evaluation};
+\node[draw=none] at (9, -6) (fjump) {};
+\node[draw=none] at (9, -8) (sjump) {};
+\node[style A] at (10, -7) (whileBody) {\verb_if_ body evaluation};
+
+\draw[thick, ->] (be) -- (evalBE);
+\draw[thick, ->] (sts) -- node[midway, right] {\small save beforeStS} (fseq);
+\draw[thick, ->] (fseq) -- node[midway, below] {\tiny for each} (evalSt);
+\draw[thick, ->] (evalBE) -- (bres);
+\draw[thick, ->] (finstr) -- (fjump);
+\end{tikzpicture}
+\end{center}
+
+
+\newpage
+If/else conditional
+\begin{center}
+\begin{tikzpicture}
+[font=\small,sibling distance =1.5cm, level distance=1.5cm, grow'=right, edge from parent/.style={draw=black, thick,->}]
+\node[style A] (if) {\verb+if+}
+child {
+node[style A] (be) {BE}
+child {
+node[style A] (lcb) {\{} child {
+node[style A] (ifsts) {StS} child {node[style A] (rcb) {\}} child {
+node[style A] (else) {else} child {node[style A] (lcb1) {\{} child {
+node[style A] (elsests) {StS} child {node[style A] (rcb1) {\}}}
+}}
+}}
+}
+}
+};
+
+\node[style B] at (1.5, -2) (evalBE) {\verb+evalBE+};
+\node[style B] at (4.5, -2) (fseq) {\verb+fseq+};
+\node[style B] at (7, -2) (evalSt) {\verb+evalSt+};
+\node[draw=none] at (7.5, -2.7) (afterIfPart) {save afterIfPart};
+
+\node[style B] at (10, -2) (fseq2) {\verb+fseq+};
+\node[style B] at (11.5, -2) (evalSt2) {\verb+evalSt+};
+\node[draw=none] at (12, -2.7) (afterElsePart) {save afterElsePart};
+
+
+\node[style A] at (1.5, -4) (bres) {\verb+bRes: VarReg+};
+\node[style A] at (2, -6) (finstr) {instr: \verb_beqz $bRes.reg (ifSize + 2)_};
+\node[style A] at (2, -8) (sinstr) {instr: \verb_blez $0 - (elseSize + 1)_};
+\node[style A, minimum height=5cm, minimum width=5cm] at (10, -6) (box) {};
+
+
+\node[draw=none] at (10,-3.7) (pinstr) {program instructions};
+\node[draw=none] at (10, -4.25) (dots) {$\dots$};
+\node[style A] at (10, -5) (beBody) {\verb_BE_ evaluation};
+\node[draw=none] at (9, -5.5) (fjump) {};
+\node[draw=none] at (9, -6.5) (sjump) {};
+\node[style A] at (10, -6) (ifBody) {\verb_if_ body evaluation};
+\node[style A] at (10, -7) (elseBody) {\verb_else_ body evaluation};
+
+\draw[thick, ->] (be) -- (evalBE);
+\draw[thick, ->] (ifsts) -- node[midway, right] {\small save beforeIfPart} (fseq);
+\draw[thick, ->] (elsests) -- node[midway, right] {\small save beforeElsePart} (fseq2);
+\draw[thick, ->] (fseq) -- node[midway, below] {\tiny for each} (evalSt);
+\draw[thick, ->] (evalBE) -- (bres);
+\draw[thick, ->] (finstr) -- (fjump);
+\draw[thick, ->] (sinstr) -- (sjump);
+\end{tikzpicture}
+\end{center}
