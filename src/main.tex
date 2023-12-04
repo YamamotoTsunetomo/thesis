@@ -15,6 +15,7 @@
 \usepackage{fancyvrb}
 \usepackage{tikz}
 \usepackage{listings}
+\usepackage{hyperref}
 \usepackage{fullpage}
 \usepackage{calc}
 \usetikzlibrary{positioning,shadows,arrows,trees,shapes,fit}
@@ -113,14 +114,14 @@
 
     Leveraging this theoretical groundwork, we've designed a tester and parser to process not just \(C0\), but also all other languages specified by CFGs, including \(C\), \(Java\), and the like.
 
-    Our full implementation is accessible on GitHub.
+    Our full implementation is accessible on \href{https://github.com/fyfsb/dcfg.git}{GitHub}.
 
     % C0 CFG
     \begin{figure}[h!]
         \center
         \includegraphics[width=13cm]{C0.png}
         \caption{Context-Free Grammar C0}
-        \label{}
+        \label{fig:grammar_c0}
     \end{figure}
 
     \tableofcontents

@@ -1,6 +1,12 @@
 \chapter{Backend}\label{ch:backend}
-We begin by describing the whole project structure, components for parsing,
-filling the symbol table and code generation.
+Having the program source parsed and delivered through the derivation tree elements, we now
+concentrate on the compiler backend.
+In this chapter, we begin with handling the symbol tables and defining models, in Section
+\ref{sec:adjustments-to-derivation-tree-element-(dte)-model}, we extend the \verb+DTE+
+with helper methods (defined in the system architecture book).
+Section~\ref{sec:using-new-tools-for-filling-the-symbol-tables} focuses on integrating the Sethi-Ulman algorithm,
+creating the debugging tools and the context utilities (current function getter, function call initializer etc).
+Finally, in Section~\ref{sec:code_gen} we describe the whole process of generating the code from the inputted derivation tree.
 
 
 \section{Symbol Table Models}\label{sec:symbol_table_models}

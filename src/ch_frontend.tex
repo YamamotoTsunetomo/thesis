@@ -575,7 +575,7 @@ Returns: \textit{Set\(<\)Symbol\(>\) \(\boldsymbol{lookaheadsFromSymbol}\) .}\\
     FOR EACH production IN g.getProductions()
     // Check if the left side of the production equals the symbol
     IF production.getLeft() EQUALS symbol THEN
-    DECLARE derivedSymbol as Symbol, SET to the first symbol of production's right side
+    DECLARE derivedSymbol as Symbol, SET to the first symbol of productions right side
 
     // Recursively compute lookaheads if derivedSymbol has not been visited
     IF NOT symbols CONTAINS derivedSymbol THEN
@@ -622,8 +622,8 @@ The core task of this method is advancing the dot by one symbol to the right. Th
 
     // Make transition paths
     FOR EACH entry IN symbolToItemsMap.entrySet()
-    DECLARE transitionSymbol as Symbol, SET to entry's key
-    DECLARE transitionItems as Set of Item, SET to entry's value
+    DECLARE transitionSymbol as Symbol, SET to entry`s key
+    DECLARE transitionItems as Set of Item, SET to entry`s value
 
     // Create transition state
     DECLARE transitionState as State, SET to createTransitionState with transitionItems, states, and g
@@ -1060,15 +1060,15 @@ In order to find the handle for the given valid string we should traverse the \(
     CONTINUE
     END IF
 
-    RETURN new Item with item's production, dotIndex, and new empty HashSet
+    RETURN new Item with item`s production, dotIndex, and new empty HashSet
     END FOR
     END IF
 
     // Make transition
     DECLARE madeTransition as boolean, SET to false
     FOR EACH entry IN currentState.getTransitionFunction().entrySet()
-    DECLARE transitionSymbol as Symbol, SET to entry's key
-    DECLARE transitionState as State, SET to entry's value
+    DECLARE transitionSymbol as Symbol, SET to entry`s key
+    DECLARE transitionState as State, SET to entry`s value
 
     IF transitionSymbol EQUALS currentSymbol THEN
     INCREMENT dotIndex
@@ -1112,7 +1112,7 @@ Since we have already identified the handle, we can make a reduction step based 
 
 \begin{codeblock}[makeReduction pseudocode]
     FUNCTION makeReduction(ArrayList of Symbol validStringArray, Item handle)
-    DECLARE handleIndex as integer, SET to handle's dotIndex minus size of handle's production's right side
+    DECLARE handleIndex as integer, SET to handle`s dotIndex minus size of handle`s production`s right side
 
     // Check if handle is found and make a reduction
     IF handleIndex IS NOT EQUAL to -1 THEN
@@ -1123,11 +1123,11 @@ Since we have already identified the handle, we can make a reduction step based 
     ADD validStringArray.get(i) to newValidStringArray
     END FOR
 
-    // Add the left side of the handle's production
+    // Add the left side of the handle`s production
     ADD handle.getProduction().getLeft() to newValidStringArray
 
     // Add symbols after the handle
-    FOR i FROM handleIndex + size of handle's production's right side TO validStringArray.size() - 1
+    FOR i FROM handleIndex + size of handle`s production`s right side TO validStringArray.size() - 1
     ADD validStringArray.get(i) to newValidStringArray
     END FOR
 
@@ -1155,7 +1155,7 @@ Returns: \textit{DTE \(\boldsymbol{derivationTree}\)}\\
 \begin{codeblock}[parseString pseudocode]
     FUNCTION parseString(String validString)
     // Convert the string into an array of symbols
-    DECLARE validStringArray as ArrayList of Symbol, SET to Grammar.stringIntoSymbols with validString, g's terminals, and g's nonterminals
+    DECLARE validStringArray as ArrayList of Symbol, SET to Grammar.stringIntoSymbols with validString, g`s terminals, and g`s nonterminals
     SET validStringArray to Grammar.eliminateExtraWhitespace(validStringArray)
 
     // Initialize the parse tree with symbols from validStringArray
