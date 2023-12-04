@@ -861,54 +861,185 @@ class FunctionCall {
 We're combining the function call stack and pebble game logic into Configuration class.
 \begin{codeblock}
 class Configuration {
-boolean[] registers; // for pebble game
-Stack<FunctionCall> stack;
+    boolean[] registers; // for pebble game
+    Stack<FunctionCall> stack;
 
-Fun currentFunction () { ... }
-void pop() { ... }
-int getRegister() { ... }
-void freeRegister(int reg) { ... }
+    Fun currentFunction () { ... }
+    void pop() { ... }
+    int getRegister() { ... }
+    void freeRegister(int reg) { ... }
 }
 \end{codeblock}
 \newpage
 \subsection{VarReg}
 Considering the tree structure of the program, it is convenient to employ recursive traversal algorithms in the code generation.
 Moreover, by itself, code generation entails only adding the handler functions for the respective tree patterns. However, this
-approach needs to be integrated with the current implementation of the pebble game and, given the recursive structures, it's vital
-to keep track of the registers of the corresponding values.
-\newpage
-Code generation part itself includes only adding the handler functions for the respective
-tree patterns. For simplicity, these are grouped into classes by context and purpose.
-Having almost all methods static, these classes encapsulate nothing except generated instruction list.
-We have
-\begin{itemize}
-\item \verb+ConstEvaluator+: generates instructions for \verb+<C>,<BC>,<CC>+;
-\item \verb+ExpressionEvaluator+: instructions for \verb+<E>,<BE>+;
-\item \verb+IdEvaluator+: binds variables, \verb+<id>+;
-\item \verb+MemoryHelper+: generates instructions for increasing/decreasing stack and
-heap pointers;
-\item \verb+CodeGenerator+: gets passed the initial program, handles generated instructions,
-delegates tree patterns to other evaluators, handles conditionals, loops and initialises function calls.
-\end{itemize}
-
-\begin{codeblock}[Compiler backend]
-input: Fun main function
-output: Instruction[] generated assembly instructions
-
-generateCode(Fun main) -> Instruction[] {
-FunctionTable.checkMainDefined(main);
-createFunctionCall(main);
-
-statements := fseq(main.getSts());
-for all element st in statements -> {
-evaluateSt(st);
-Config.freeAllRegisters();
+approach needs to be integrated with the current implementation of the pebble game and it's vital
+to keep track of the registers of the corresponding values. For that purpose, we add one more model:
+\begin{codeblock}[VarReg]
+class VarReg {
+    Variable var;
+    int reg;
+    VarType type;
 }
-return CodeGenerator.instructions;
+\end{codeblock}
+\verb+Variable+ and \verb+VarType+ are separated. When dealing with \verb+<id>+ bindings, the respective variable is
+extracted from the struct and \verb+type = var.type+. Other case is handling constants, for that the respective
+type is set
+\begin{itemize}
+\item \verb+<CC>+ - \verb+CHAR+
+\item \verb+<C>+ - \verb+INT+ or \verb+UINT+
+\item \verb+<BC>+ - \verb+BOOL+
+\end{itemize}
+and the variable attribute is set to \verb+null+.
+\newpage
+\section{Code Generation}\label{sec:code_gen}
+In this section, we introduce the classes responsible for the code generation, and describe the handler
+functions for each pattern. For simplicity, classes are grouped by the context and purpose. Having almost all
+methods static, these classes encapsulate nothing except the generated instruction list. We have
+\subsection{ConstEvaluator}
+This class generates instructions for \verb+<C>+, \verb+<BC>+ and \verb+<CC>+:
+\begin{codeblock}[Constant Evaluator]
+class ConstEvaluator {
+    evaluateNumberConstant(DTE c) -> VarReg {
+        assert c is <C>
+
+        reg := Configuration.getFreeReg()
+        value := parse(c)
+        type := if c ends with 'u' then UINT else INT
+
+        case type == UINT -> {
+            add new instruction [ addi $reg $reg value ]
+        }
+
+        otherwise -> {
+            add new instruction [ addiu $reg $reg value ]
+        }
+
+        return new VarReg(reg, type)
+    }
+
+    evaluateBooleanConstant(DTE bc) -> VarReg {
+        assert bc is <BC>
+        reg := Configuration.getFreeReg()
+        word := bw(bc)
+
+        value = if word == 'true' then 1 else 0
+        add new instruction [ addi $reg $reg value]
+        return new VarReg(reg, BOOL)
+    }
+
+    evaluateCharConstant(DTE cc) -> VarReg {
+        assert cc is <CC>
+        reg := Configuration.getFreeReg()
+        value := parse(cc)
+        add new instruction [ addi $reg $reg value ]
+        return new VarReg(reg, CHAR)
+    }
+}
+\end{codeblock}
+\subsection{Expression Evaluator}
+Generates instructions for arithmetic and boolean expressions, i.e. \verb+<E>+ and \verb+<BE>+.
+Implementation is described later in the section.
+\begin{codeblock}[ExpressionEvaluator]
+class ExpressionEvaluator {
+    // input <E>
+    evaluateArithmeticExpression(DTE e) -> VarReg { ... }
+
+    // input <BE>
+    evaluateBooleanExpression(DTE be) -> VarReg { ... }
+
+    // Straightforward case split on 'op'
+    evaluateBinaryOperation(VarReg left, DTE op, VarReg right) -> VarReg { ... }
+
+    // input <Atom>
+    evaluateAtom(DTE atom) -> VarReg { ... }
+}
+\end{codeblock}
+
+\subsection{Id Evaluator}
+Binds and evaluates the variables (\verb+<id>+). The method \verb+evaluateId+ gets passed the \verb+<id>+ token,
+whereas \verb+bindVariableName+ binds the \verb+bw(Na)+ to the respective memory struct, and generates the code for
+calculating the base address of the variable.
+\begin{codeblock}[IdEvaluator]
+class IdEvaluator {
+    evaluateId(DTE id) -> VarReg { ... }
+    bindVariableName(DTE na) -> VarReg { ... }
+}
+\end{codeblock}
+\subsection{Memory Helper}
+Contains the logic for increasing/decreasing stack and heap pointers. This class is used in the allocations and function calls.
+\begin{codeblock}[MemoryHelper]
+class MemoryHelper {
+    increaseHeapPointer(int size) { ... }
+    increaseStackPointer(int size) { ... }
 }
 \end{codeblock}
 \newpage
-\begin{center}
+\subsection{Code Generator}
+Gets passed the initial program, encapsulates the generated instructions, delegates tree patterns to other
+evaluator classes. Directly manages function calls, conditional and loop statements.
+
+\begin{codeblock}[Code Generator]
+class CodeGenerator {
+    generateCodeForFunctionCall(FunctionCall call) {
+        function := call.function
+        if !FunctionTable.containsFunction(function) -> { error }
+
+        // any function other than 'main'
+        if call.rds is defined -> {
+            reg := Configuration.getFreeReg()
+            add new instructions [
+                addi $reg $0 -(size(function) - 4),
+                addi $RA $reg 0
+            ]
+            Configuration.freeRegister(reg) // release
+        }
+
+        // body -> RSt | StS ; RSt
+        case function.body.fson is <body> -> generateRSt(body.fson, call)
+        otherwise -> {
+            generateStS(body.fson)
+            generateRSt(body.fson.bro.bro, call)
+        }
+    }
+
+    generateStS(DTE sts) {
+        for all st in fseq(sts) -> {
+            generateSt(st)
+            Configuration.freeAllRegisters()
+        }
+    }
+
+    ...
+}
+\end{codeblock}
+As can be seen in \verb+CodeGenerator+, starting the compilation process entails creating a function call for
+\verb+main+ function and forwarding it to \verb+CodeGenerator.generateCodeForFunctionCall+ method:
+\begin{codeblock}
+if !FunctionTable.containsFunction("main") -> { halt } // we are done
+
+mainFunction := FunctionTable.getFunction("main")
+mainCall := Configuration.createFunctionCall(mainFunction)
+
+CodeGenerator.generateCodeForFunctionCall(mainCall)
+\end{codeblock}
+The method checks if the result destination is defined (for any function other than main it will be defined
+and contain the pointer to the base address of the variable the result gets assigned to). In such case, the return address
+register gets assigned the base address of the result destination variable. Subsequently, methods generating code for
+statements are called.
+
+\subsection{Generating for Statements}
+To generate code for statements, a case split is performed based on statement types, as depicted in Figure~\ref{fig:st_types}.
+Three distinct patterns are identified:
+\begin{itemize}
+    \item Assignments: Statements commencing with and identifier followed by an assignment operator.
+    \item Loops: Statements beginning with the \verb+while+ keyword.
+    \item Conditionals: Statements initiated with the \verb+if+ keyword.
+\end{itemize}
+
+\begin{figure}[h]
+\centering
 \begin{tikzpicture}
 [font=\small,sibling distance =1.5cm, level distance=1.5cm, grow'=right, edge from parent/.style={draw=black, thick,->},
 level 3/.style={level distance=1cm},
@@ -943,9 +1074,18 @@ child {node[style B] (conditional) {generateConditional}}}
 };
 
 \end{tikzpicture}
-\end{center}
+\caption{Statement types}
+\label{fig:st_types}
+\end{figure}
 \newpage
-\begin{center}
+\subsection{Generating Assignments}
+As illustrated in Figure~\ref{fig:gen_assignment}, the evaluation of an identifier involves storing the left value of the corresponding variable inside a register,
+returned within the \verb_VarReg_ record instance \verb+verRegId+.
+On the other hand, the assigned value (\verb+X+) is also evaluated, and its right value is stored in the register associated with \verb+varRegValue+.
+Both instances of \verb+VarReg+ contain the types of the variables, and a verification is conducted to ensure their equality.
+In case of a mismatch, a type safety error is raised; otherwise, the assignment is concluded with a store instruction.
+\begin{figure}[h]
+\centering
 \begin{tikzpicture}
 [font=\small,sibling distance =1.5cm, level distance=1.5cm, grow'=right, edge from parent/.style={draw=black, thick,->}]
 \node[style A] (id) {Id}
@@ -970,204 +1110,251 @@ node [style A] (eq) {=} child { node[style A] (x) {X}}
 \draw[thick, ->] (check) -- node[midway, below] {\tiny false} (error);
 \draw[thick, ->] (check) -- node[midway, right] {\tiny true} (instr);
 \end{tikzpicture}
-\end{center}
+\caption{Generate Assignment}
+\label{fig:gen_assignment}
+\end{figure}
+
+The evaluation of the identifier, as shown in the listing below, receives the
+\verb+<id>+ token and a boolean parameter \verb+lv+, indicating the left value.
+When \verb+lv=false+, the right value of the identifier is needed.
+Upon computing the base address, an additional dereference is appended to the instruction list.
+Otherwise, no extra dereference is added. Regardless of the \verb+lv+ parameter, if identifier
+derives the usage of 'address-of' operator, extra dereference is omitted. Base address of the variable
+is bound by the call of \verb+bindVariable+ from class \verb+IdEvaluator+.
+
+\begin{figure}[h]
+\centering
 \begin{codeblock}[evaluateId]
 input: DTE id, bool lv (checks if additional dereference is required)
 output: VarReg result - bound identificator
 
 evaluateId(DTE id, bool lv) -> VarReg {
-res := bindVariable(id)
-if (id.children is not <id>& and !lv) {
-add new instruction [lw $res.reg $res.reg 0] // dereference
-}
-return res
+    res := bindVariable(id)
+    if (id.children is not <id>& and !lv) {
+        add new instruction [lw $res.reg $res.reg 0] // dereference
+    }
+    return res
 }
 \end{codeblock}
+\label{fig:evalId}
+\end{figure}
 
 \newpage
+Binding the variable based on the pattern:
+\begin{itemize}
+\item \verb+<Na>+: Name is bound either from the global memory, or from the current function's struct.
+\item \verb+<id>.<Na>+: Structure's identifier is evaluated recursively. Then a search of the component
+with name \verb+bw(Na)+ is performed and the register storing the base address of the struct is increased by
+the displacement of the component.
+\item \verb+<id>[...+: Array's identifier is evaluated recursively. The value inside the square brackets is calculated,
+and the register storing the base address of the array is increased by the standard displacement of the array's element:
+\[ba(arr[i]) = ba(arr) + size(type(arr[i])) \cdot i\]
+\item \verb+<id>*+: Pointer access entails additional dereferencing of the recursively evaluated pointer's identifier.
+\item \verb+<id>&+: As mentioned above, only name is bound, no additional instructions get added.
+\end{itemize}
+
 \begin{codeblock}[bindVariable]
 input: DTE id
 output: VarReg result
 
 bindVariable(DTE id) -> VarReg {
-case id.children is <Na> -> {
-return bindName(id.fson)
-}
+    case id.children is <Na> -> {
+        return bindName(id.fson)
+    }
 
-case id.children is <id>.<Na> -> {
-structVar := evaluateId(id.fson)
+    case id.children is <id>.<Na> -> {
+        structVar := evaluateId(id.fson)
 
-compName := bw(id.fson.bro.bro)
-structComp := getComponent(structVar.type, compName)
-j := structVar.j and d := displ(structComp, structVar.var)
-add new instruction [addi $j $j d]
-return structComp
-}
+        compName := bw(id.fson.bro.bro)
+        structComp := getComponent(structVar.type, compName)
+        j := structVar.j and d := displ(structComp, structVar.var)
+        add new instruction [addi $j $j d]
+        return structComp
+    }
 
-case id.children is <id>[... -> return bindArrElement(id)
-case id.children is <id>* -> {
-res := evaluateId(id.fson)
-add new instruction [lw $res.reg $res.reg 0] // deref
-return res
-}
-case id.children is <id>& -> {
-return bindName(id.fson)
-}
+    case id.children is <id>[... -> return bindArrElement(id)
+    case id.children is <id>* -> {
+        res := evaluateId(id.fson)
+        add new instruction [lw $res.reg $res.reg 0] // deref
+        return res
+    }
+    case id.children is <id>& -> {
+        return bindName(id.fson)
+    }
 }
 \end{codeblock}
 
-\newpage
+To bind the name, we first access the current function, from the \verb+Configuration+ class. Local variable
+is then checked in the function's struct. If found, name is then bound locally, otherwise, the variable is searched
+in the global memory's struct.
 \begin{codeblock}[bindName]
 input: DTE na - name tree element
 output: VarReg res - bound variable
 
 bindName(DTE na) -> VarReg {
-cf := Configuration.currentFunction
-cfms := cf.memoryStruct
+    cf := Configuration.currentFunction
+    cfms := cf.memoryStruct
 
-case bw(na) is in cfms -> { // bind local variable from the cf
-comp := gm.getComponent(bw(na))
-reg := Configuration.getFreeReg() // pebble game
-add new instruction [addi $reg $spt displ(comp, cf) - size(cf)]
-return new VarReg(reg, comp)
-}
-otherwise -> { // bind global variable
-memory := MemoryTable.gm
-comp := gm.getComponent(bw(na)) // Variable or null
-if comp is null -> { error } // not in gm
+    case bw(na) is in cfms -> { // bind local variable from the cf
+        comp := gm.getComponent(bw(na))
+        reg := Configuration.getFreeReg() // pebble game
+        add new instruction [addi $reg $spt displ(comp, cf) - size(cf)]
+        return new VarReg(reg, comp)
+    }
+    otherwise -> { // bind global variable
+        memory := MemoryTable.gm
+        comp := gm.getComponent(bw(na)) // Variable or null
+        if comp is null -> { error } // not in gm
 
-reg := Configuration.getFreeReg() // pebble game
-add new instruction [addi $reg $bpt displ(comp, memory)]
-return new VarReg(reg, comp)
-}
+        reg := Configuration.getFreeReg() // pebble game
+        add new instruction [addi $reg $bpt displ(comp, memory)]
+        return new VarReg(reg, comp)
+    }
 }
 \end{codeblock}
 
+For the assigned value, we differentiate among arithmetic and boolean expressions, character constants,
+heap allocations and function calls. Any other pattern is considered a grammar error.
 \begin{codeblock}[getValue]
 input: DTE x - tree element representing assigned value
 output: VarReg varRegValue - bound value
 
 getValue(DTE x) -> VarReg {
-case x.children is <E> -> return evaluateExpr(x.fson)
-case x.children is <BE> -> return evaluateBE(x.fson)
-case x.children is <CC> -> return evaluateCharConst(x.fson)
-case x.children is new <Na>* -> return evaluateAlloc(x.fson.bro)
-case x.children is <Na>(... -> return funCall(x)
-otherwise -> error // grammar error
+    case x.children is <E> -> return evaluateExpr(x.fson)
+    case x.children is <BE> -> return evaluateBE(x.fson)
+    case x.children is <CC> -> return evaluateCharConst(x.fson)
+    case x.children is new <Na>* -> return evaluateAlloc(x.fson.bro)
+    case x.children is <Na>(... -> return funCall(x)
+    otherwise -> error // grammar error
 }
 \end{codeblock}
 
 \newpage
+For the arithmetic expressions, we rely on the fact, that token \verb+<E>+ has at most 3 direct children.
+\begin{itemize}
+\item \verb+<E>+ has 3 children: it is either a binary operation, or a factor inside parenthesis \verb+(F)+.
+In case of the latter, inner factor is evaluated recursively, otherwise operands and the operator are extracted from the
+parent tree element, and the instruction corresponding to the respective operation (\verb_+,-,*,/_) and the type (\verb+INT, UINT+)
+is added to the instruction list.
+\item \verb+<E>+ has 2 children: Single occurrence of such pattern is the case with unary minus on the factor. Factor is
+evaluated recursively, and the value inside the register is negated.
+\item \verb+<E>+ has 1 child: If \verb+<T>+ or \verb+<F>+ appear, we continue traversing the children, case of the
+identifier is handled by the aforementioned \verb+evaluateId+, arithmetic constants are parsed with \verb+ConstEvaluator+ class.
+\end{itemize}
 \begin{codeblock}[evaluateExpr]
 input: DTE e - expression tree element
 output: VarReg res - bound value and register of the expression
 
 evaluateExpr(DTE e) -> VarReg {
-case size(e.children) is 3 -> {
-case e.children is (<F>) -> evaluateExpr(e.fson.bro)
-otherwise -> {
-firstOperand := e.fson
-operator := firstOperand.bro
-secondOperand := operator.bro
-evalBinaryOperation(firstOperand, operator, secondOperand)
-}
-}
-case size(e.children) is 2 -> {
-f := evaluateExpr(e.fson.bro)
-add new instruction [ sub $f.reg 0 $f.reg ]
-return f
-}
-case size(e.children) is 1 -> {
-case e.fson is <T> or <F> -> evaluateExpr(e.fson)
-case e.fson is <id> -> evaluateId(e.fson, false)
-case e.fson is <C> -> evaluateConst(e.fson)
-}
-otherwise -> error
+    case size(e.children) is 3 -> {
+        case e.children is (<F>) -> evaluateExpr(e.fson.bro)
+        otherwise -> {
+            firstOperand := e.fson
+            operator := firstOperand.bro
+            secondOperand := operator.bro
+            evalBinaryOperation(firstOperand, operator, secondOperand)
+        }
+    }
+    case size(e.children) is 2 -> {
+        f := evaluateExpr(e.fson.bro)
+        add new instruction [ sub $f.reg 0 $f.reg ]
+        return f
+    }
+    case size(e.children) is 1 -> {
+        case e.fson is <T> or <F> -> evaluateExpr(e.fson)
+        case e.fson is <id> -> evaluateId(e.fson, false)
+        case e.fson is <C> -> evaluateConst(e.fson)
+    }
+    otherwise -> error
 }
 \end{codeblock}
 
 \newpage
+Allocations entail storing the heap pointer's current value inside the register bound to the first identifier of
+the assignment statement, after which \verb+MemoryHelper+'s method for increasing the heap pointer is utilized. Size of
+the increase, is the size of the pointer's target type.
 \begin{codeblock}[evaluateAlloc]
 input: DTE x - tree element deriving new <Na>*
 output: new heap entry gets allocated, heap pointer increased.
 
 evaluateAlloc(DTE x) {
-add new instruction [ sw $hpt $varRegId.reg 0 ]
-MemoryHelper.increaseHPT(size(varRegId.var))
+    add new instruction [ sw $hpt $varRegId.reg 0 ]
+    MemoryHelper.increaseHPT(size(varRegId.var))
 }
 \end{codeblock}
-
+To create the function call, we first check the existence of the function with name \verb+bw(Na)+ in the
+function table. The stack pointer is then increased. Subsequently, if present, the parameter values are set.
+Next step is to initialize local variables, number of the memory words occupied is obtained and the respective range on the
+stack is filled with zeros. Result destination stack is initialized with the base address of the identifier.
+Jump and link instruction to the called function's label is added to the instruction list, after which the \verb+CodeGenerator+'s
+method \verb+generateCodeForFunctionCall+ is called.
 \begin{codeblock}[funCall]
 input: DTE x - tree element deriving <Na> (<PaS>) {...
 output: new function call gets created, stack pointer increased
 
 funCall(x) {
-name := x.fson
-function := FunTable.getFunction(name)
-MemoryHelper.increaseSPT(size(function))
+    name := x.fson
+    function := FunTable.getFunction(name)
+    MemoryHelper.increaseSPT(size(function))
 
-if x.nthSon(3) is <PaS> {
-funMemory = function.getMemoryStruct()
-for all i = 0,1,... size(x.nthSon(3)) - 1 -> {
-VarReg p := evalPa(x.nthSon(3)[i]) // pa -> <E>|<BE>|<CC>
-Variable strParam := funMemory.at(i)
+    if x.nthSon(3) is <PaS> {
+        funMemory = function.getMemoryStruct()
+        for all i = 0,1,... size(x.nthSon(3)) - 1 -> {
+            VarReg p := evalPa(x.nthSon(3)[i]) // pa -> <E>|<BE>|<CC>
+            Variable strParam := funMemory.at(i)
 
-imm := -size(function) + displ(function, strParam)
-add new instruction [ sw $p.reg $spt imm ]
-Configuration.freeRegister(p.reg) // rm node from pebble
-}
-}
+            imm := -size(function) + displ(function, strParam)
+            add new instruction [ sw $p.reg $spt imm ]
+            Configuration.freeRegister(p.reg) // rm node from pebble
+        }
+    }
 
-mwo := size(function.localVariables)
-reg1, reg2 := Configuration.getFreeRegisters()
-firstLocal := function.localVariables[0]
+    mwo := size(function.localVariables)
+    reg1, reg2 := Configuration.getFreeRegisters()
+    firstLocal := function.localVariables[0]
 
-add new instruction [ add $reg1 $spt displ(function, firstLocal) ]
-add new instruction [ addi $reg2 $0 mwo ]
-add new instruction [ zero(reg1, reg2) ]
-Configuration.freeRegisters(reg1, reg2)
+    add new instruction [ add $reg1 $spt displ(function, firstLocal) ]
+    add new instruction [ addi $reg2 $0 mwo ]
+    add new instruction [ zero(reg1, reg2) ]
+    Configuration.freeRegisters(reg1, reg2)
 
-initRDS()
-add new instruction [ jal $function.label ]
-call := createFunctionCall(function)
-generateCodeForCall(call)
+    initRDS()
+    add new instruction [ jal $function.label ]
+    call := createFunctionCall(function)
+    generateCodeForCall(call)
 }
 
 \end{codeblock}
+\subsubsection{Evaluating the Return Statement}
 
-\newpage
-\begin{codeblock}[genereateCodeForCall]
-input: FunctionCall call - current function call
-output: generated code is added to the main list
+Returned result is an expression, which is evaluated. Subsequently, the result is assigned to the
+identifier in the assignment by dereferencing the \verb+rds+ pointer. Function then is ready either to
+return or to halt (if name="main"). In case of the former, stack pointer is decreased by the size of the function,
+return address is obtained and the jump performed.
+\begin{codeblock}[generateRSt]
+generateRSt(DTE rSt, FunctionCall call) {
 
-generateCodeForCall(FunctionCall call) {
-reg := Configuration.getFreeReg()
-add new instruction [ sw $RA $reg 0 ]
-Configuration.freeRegister(reg)
+    // RSt = return X, X = <E>|<BE>|<CC>
+    res := evaluateResult(body.fson.bro)
+    rdsReg := bind(function.rds)
+    add new instruction [ sw $res.reg $rdsReg 0]
+    if Configuration.currentFunction is "main" -> { HALT program }
 
-body := call.function.getBody()
-// body -> StS ; RSt
-if body.fson is <StS> {
-statements = fseq(body.fson)
-for all st in statements -> { evalSt(st) } // already shown
-body = body.bro.bro // moving pointer to RSt
-}
-
-// RSt = return X, X = <E>|<BE>|<CC>
-res := evaluateResult(body.fson.bro)
-rdsReg := bind(function.rds)
-add new instruction [ sw $res.reg $rdsReg 0]
-if Configuration.currentFunction is "main" -> { HALT program }
-
-add new instruction [ lw $1 $spt -(size(function) - 4)]
-add new instruction [ addi $spt $spt -(size(function) - 4)]
-add new instruction [ jr $1 ]
+    add new instruction [ lw $1 $spt -(size(function) - 4)]
+    add new instruction [ addi $spt $spt -(size(function) - 4)]
+    add new instruction [ jr $1 ]
 }
 \end{codeblock}
 
 \newpage
-Loop
-\begin{center}
+\subsection{Loops}
+Main concern with loops and conditionals is calculating the jump distance. Upon the evaluation of the boolean expression,
+following branch jump should contain the size of the instructions of the body, which is not yet evaluated. Workaround is
+to first generate the instructions for the body of the loop, store the size and then insert the respective jump instructions
+before and after the body. For that purpose, indices before and after the \verb+StS+ instructions in the list are also
+recorded. Other than that, integration is straightforward, as depicted in Figure~\ref{fig:while_st}.
+\begin{figure}[h]
+\centering
 \begin{tikzpicture}
 [font=\small,sibling distance =1.5cm, level distance=1.5cm, grow'=right, edge from parent/.style={draw=black, thick,->}]
 \node[style A] (while) {\verb+while+}
@@ -1203,11 +1390,16 @@ node[style A] (sts) {StS} child { node[style A] (rcb) {\}}}
 \draw[thick, ->] (finstr) -- (fjump);
 \draw[thick, ->] (sinstr) -- (sjump);
 \end{tikzpicture}
-\end{center}
+\caption{Evaluating loops}
+\label{fig:while_st}
+\end{figure}
 
 \newpage
-If conditional
-\begin{center}
+\subsection{If Statements}
+Evaluation of the \verb+if+ statements has similarities with loops. Since there is a branch jump of the size
+of the `if` body, the inner \verb+StS+ is evaluated first and the size of the body, index before the statement sequence
+are recorded. Subsequently, branch instruction is inserted in the corresponding position in the list.
+\begin{figure}[h]
 \begin{tikzpicture}
 [font=\small,sibling distance =1.5cm, level distance=1.5cm, grow'=right, edge from parent/.style={draw=black, thick,->}]
 \node[style A] (while) {\verb+if+}
@@ -1241,11 +1433,15 @@ node[style A] (sts) {StS} child { node[style A] (rcb) {\}}}
 \draw[thick, ->] (evalBE) -- (bres);
 \draw[thick, ->] (finstr) -- (fjump);
 \end{tikzpicture}
-\end{center}
-
+\caption{If statement evaluation}
+\label{fig:if_st}
+\end{figure}
 
 \newpage
-If/else conditional
+\subsection{If/Else Statements}
+Only difference from the regular \verb+if+ statements is that an unconditional jump is added in the end of the
+if body, to skip the else part. Given adjustments, initial branch jump's distance gets incremented. Other than that,
+realization is straightforward.
 \begin{center}
 \begin{tikzpicture}
 [font=\small,sibling distance =1.5cm, level distance=1.5cm, grow'=right, edge from parent/.style={draw=black, thick,->}]
