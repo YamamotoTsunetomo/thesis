@@ -16,7 +16,10 @@
 \usepackage{tikz}
 \usepackage{listings}
 \usepackage{array}
-\usepackage{hyperref}
+\usepackage[colorlinks = true,
+    linkcolor = black,
+    urlcolor  = blue,
+    citecolor = blue]{hyperref}
 \usepackage{fullpage}
 \usepackage{calc}
 \usepackage{amssymb}
@@ -121,13 +124,6 @@
 
     Our full implementation is accessible on \href{https://github.com/fyfsb/dcfg.git}{GitHub}.
 
-    % C0 CFG
-    \begin{figure}[h!]
-        \center
-        \includegraphics[width=13cm]{C0.png}
-        \caption{Context-Free Grammar C0}
-        \label{fig:grammar_c0}
-    \end{figure}
 
     \tableofcontents
     \include{ch_frontend}
@@ -138,6 +134,6 @@
         Wolfgang J. Paul, Christoph Baumann, Petro Lutsyk, Sabine Schmaltz (2016) System Architecture: An Ordinary Engineering Discipline
 
         \bibitem{sipser}
-        Michael Sipser (xxxx) Introduction to the Theory of Computation
+        Michael Sipser (2013) Introduction to the Theory of Computation
     \end{thebibliography}
 \end{document}
