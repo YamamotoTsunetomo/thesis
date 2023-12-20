@@ -15,9 +15,12 @@
 \usepackage{fancyvrb}
 \usepackage{tikz}
 \usepackage{listings}
+\usepackage{array}
 \usepackage{hyperref}
 \usepackage{fullpage}
 \usepackage{calc}
+\usepackage{amssymb}
+\usepackage{stmaryrd}
 \usetikzlibrary{positioning,shadows,arrows,trees,shapes,fit}
 \usetikzlibrary{graphs} % LaTeX and plain TeX
 \usetikzlibrary[graphs] % ConTeXt
@@ -88,10 +91,12 @@
 
 \newtheorem*{definition}{Definition}
 
+\newcommand{\tok}[1]{\langle #1 \rangle}
+\newcommand{\sep}{\ |\ }
+
 % Document
 \begin{document}
     \maketitle
-
     \chapter*{Abstract}
 
     % Overview
@@ -106,9 +111,9 @@
     \subsection*{Methodology and Implementation}
     Our methodology and implementation are based on these books:
     \begin{itemize}
-        \item "System Architecture: An Ordinary Engineering Discipline" by Sabine Schmaltz, Petro Lutsyk, Wolfgang J. Paul.
+        \item "System Architecture: An Ordinary Engineering Discipline" by Sabine Schmaltz, Petro Lutsyk, Wolfgang J. Paul. \cite{sysbook}
         \item "Introduction to the Theory of Computation"
-        by Michael Sipser.
+        by Michael Sipser. \cite{sipser}
     \end{itemize}
     \setlength{\parindent}{0pt}
 
@@ -128,4 +133,11 @@
     \include{ch_frontend}
     \include{ch_backend}
 
+    \begin{thebibliography}{9}
+        \bibitem{sysbook}
+        Wolfgang J. Paul, Christoph Baumann, Petro Lutsyk, Sabine Schmaltz (2016) System Architecture: An Ordinary Engineering Discipline
+
+        \bibitem{sipser}
+        Michael Sipser (xxxx) Introduction to the Theory of Computation
+    \end{thebibliography}
 \end{document}
