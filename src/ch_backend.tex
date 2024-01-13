@@ -1,18 +1,19 @@
 \chapter{Backend}\label{ch:backend}
 Having the program source parsed and delivered through the derivation tree elements, we now
 concentrate on the compiler backend.
-In this chapter, we begin with handling the symbol tables and defining models, in Section
+In this chapter, we begin with handling the symbol tables and defining the data structures, in Section
 \ref{sec:adjustments-to-derivation-tree-element-(dte)-model}, we extend the \verb+DTE+
 with helper methods (defined in the system architecture book).
 Section~\ref{sec:using-new-tools-for-filling-the-symbol-tables} focuses on integrating the Sethi-Ulman algorithm,
 creating the debugging tools and the context utilities (current function getter, function call initializer etc).
-Finally, in Section~\ref{sec:code_gen} we describe the whole process of generating the code from the inputted derivation tree.
+Finally, in Section~\ref{sec:code_gen} we describe the whole process of the code generation from the given derivation tree.
 
 
-\section{Symbol Table Models}\label{sec:symbol_table_models}
-In this section, we provide definitions for symbol table models, specifically the type table, variable table, and function table.\
+\section{Symbol Table Data Structures}\label{sec:symbol_table_models}
+In this section, we provide definitions of the data structures the for symbol tables, specifically the type table, variable table, and function table.\
 These tables are essential for accessing pertinent program data prior to code generation.
 Example usages include retrieving function parameters by name, searching for struct components, ensuring type safety, calculating displacements etc.
+The implementation of the data structures can be found in packages \verb+model+ and \verb+table+.
 
 The base models are as follows
 \begin{enumerate}
@@ -57,7 +58,7 @@ The base models are as follows
 
 \subsection{Tables}\label{subsec:tables}
 For representing the tables of the aforementioned models, we introduce the following interface:
-\begin{codeblock}[Table]
+\begin{codeblock}[Table. Java implementation on \href{https://github.com/fyfsb/dcfg/blob/main/src/main/java/table/Table.java}{Github}]
     interface Table {
         void fillTable(DTE content) throws Exception;
     }
@@ -72,18 +73,18 @@ Respective implementations of the interface are:
 \end{enumerate}
 
 
-\section{Adjustments to Derivation Tree Element (DTE) Model}\label{sec:adjustments-to-derivation-tree-element-(dte)-model}
-In the previous chapter, model for the derivation tree element was introduced.
+\section{Adjustments to Derivation Tree Element (DTE)}\label{sec:adjustments-to-derivation-tree-element-(dte)-model}
+In the previous chapter, the class for the derivation tree element was introduced.
 For the code generation, we extend the class with new methods that help to extract meaningful data from the subtree.
-As an example, we show the derivation of the simple of variable declarations\\ \verb+int x; char y+ (Figure \ref{fig:example_subtree})
+As an example, we show the derivation tree of the following variable declaration sequence:\\ \verb+int x; char y+ (Figure \ref{fig:example_subtree})
 \begin{figure}[h]
-    \begin{codeblock}[Derivation tree element]
-        class DTE {
-            Symbol label;
-            DTE father;
-            DTE fson;
-            DTE bro;
-        }
+    \begin{codeblock}[Derivation tree element. Java implementation on \href{https://github.com/fyfsb/dcfg/blob/main/src/main/java/tree/DTE.java}{Github}]
+class DTE {
+    Symbol label;
+    DTE father;
+    DTE fson;
+    DTE bro;
+}
     \end{codeblock}\label{fig:figure2}
 
 \end{figure}
@@ -142,7 +143,6 @@ Certain grammar tokens have the corresponding sequence element that has the deri
 In the context of symbol definitions, there is $\langle TyDS\rangle, \langle VaDS \rangle$ and $\langle FuDS \rangle$.
 To optimize the input for table models, an array of the respective tree elements is preferred over a singular sequence element.
 To facilitate this, a method for flattening the sequence is introduced.
-\newpage
 \begin{definition}[fseq]
     Let $t = XS$ be a sequence subtree, i.e.
     \[XS \to X \ |\ XS;X\qquad X,XS\in N\]
@@ -152,7 +152,7 @@ To facilitate this, a method for flattening the sequence is introduced.
     Algorithm is implemented in the following way:
 \end{definition}
 
-\begin{codeblock}[Flattened sequence]
+\begin{codeblock}[Flattened sequence. Java implementation on \href{https://github.com/fyfsb/dcfg/blob/main/src/main/java/tree/DTE.java}{Github}]
     input: sequence subtree xs,
     output: flattened sequence DTE[]
 
@@ -190,7 +190,7 @@ For this purpose, function getting the border word of the subtree is used:
     where $k$ is the number of siblings of \verb+x.fson+\\
     Algorithm:
 \end{definition}
-\begin{codeblock}[Border word]
+\begin{codeblock}[Border word. Java implementation on \href{https://github.com/fyfsb/dcfg/blob/main/src/main/java/tree/DTE.java}{Github}]
     input: derivation tree element x.
     output: concatenated labels of the leaves, string res.
 
@@ -207,8 +207,11 @@ For this purpose, function getting the border word of the subtree is used:
 \end{codeblock}
 
 \subsection{Extract Component Pairs}\label{subsec:extract-component-pairs}
-The most boilerplate is produced at the stage of filling the symbol tables, especially
-at handling the sequences of pair components, i.e.
+The current implementation of the filling of the symbol tables requires extracting the pairs
+of form \verb+Ty Na+ (variable declaration) in the string form and performing the lookups in the
+type table and the memory struct, respectively.
+This step ensures that the context conditions (type being defined, variable name being unique) are satisfied.
+We're referring to the aforementioned pattern as a pair component, i.e a pair of tokens $A, B$ derived as
 \[ XS \to XS; X\ |\ X\qquad XS,X \in N\qquad A,B\in N\cup T\]
 One clear example of such pattern is variable (or parameter) declaration sequence.
 \[ VaD \to Ty\ Na\]
@@ -218,7 +221,7 @@ Reading the variable declarations occurs at all 3 stages of filling the symbol t
     \item Global variable declarations: consists only of variable declarations;
     \item Function declarations: parameters and local variables.
 \end{itemize}
-An attempt at simplifying the implementation entails extracting pair sequence reads
+An attempt at simplifying the implementation entails extracting the component pair sequence reads
 into the following algorithm:
 
 \begin{definition}[extractCompPairs]
@@ -233,7 +236,7 @@ into the following algorithm:
     \[ \verb+extrCompPairs(XS)+ = \Bigg[ \Big( bw(fs_1.fson),bw(fs_1.fson.bro) \Big),\dots,\Big( bw(fs_k.fson),bw(fs_k.fson.bro) \Big) \Bigg]\]
     where for $i\in[1:k],\ fs_i \in fseq(xs),\ k=|fseq(xs)|$
 \end{definition}
-\begin{codeblock}[Extracting component pairs]
+\begin{codeblock}[Extracting component pairs. Java implementation on \href{https://github.com/fyfsb/dcfg/blob/main/src/main/java/tree/DTE.java}{Github}]
     input: DTE xs - sequence element deriving component pairs parent x
     output: string[][] - array of pair border word tuples
 
@@ -282,7 +285,6 @@ Our approach is guided by the following strategies:
         \item Parameters and local variables follow the same constraints as global variables.
     \end{itemize}
 \end{enumerate}
-\newpage
 General overview of the compilation process is shown in Figure~\ref{fig:c0_comp}.
 The program tree derives 3 sequence tokens \verb+<TyDS>+, \verb+<VaDS+ and \verb+FuDS+.
 Subsequently, the corresponding tables are populated.
@@ -368,7 +370,7 @@ type definition separately (Figure~\ref{fig:fill_tt}).
 \newpage
 Each time a derivation tree element is processed, the corresponding pattern matching function ensures
 that the passed argument satisfies the required label, as exemplified below.
-\begin{codeblock}[fillTypeTable]
+\begin{codeblock}[fillTypeTable. Java implementation on \href{https://github.com/fyfsb/dcfg/blob/main/src/main/java/table/TypeTable.java}{Github}]
     input: DTE tyds - tree element of type TyDS,
     output: none
     effect: fills the table with new types
@@ -556,8 +558,7 @@ At the end of the loop, the displacement variable represents the sum of the size
 equivalent to the size of the entire struct, which is then assigned to the respective attribute.
 After passing the name, size and components to the struct type builder, new instance of the \verb+VarType+
 is added to the type table.
-\newpage
-\begin{codeblock}
+\begin{codeblock}[Adding struct type. Java implementation on \href{https://github.com/fyfsb/dcfg/blob/main/src/main/java/table/TypeTable.java}{Github}]
     ...
     components := fseq(VaDS)
     compNames := emptySet()
@@ -575,7 +576,10 @@ is added to the type table.
         strComps.put(na, new Variable(na, 0, type, displacement))
         displacement += size(type)
     }
-    structType := structBuilder.setName(bw(Na)).setSize(displacement).setComps(strComps).build()
+    structType := structBuilder
+        .setName(bw(Na))
+        .setSize(displacement)
+        .setComps(strComps).build()
     TypeTable.addType(structType)
 \end{codeblock}
 \begin{figure}[h]
@@ -626,22 +630,23 @@ Since variable scopes are decided to be stored inside a struct, we treat global
 variable declaration sequence \textbf{almost} as a type definition of form:
 
 \begin{codeblock}
-    typedef struct { VaDS } $gm;
+typedef struct { VaDS } $gm;
 \end{codeblock}
 Single difference from a regular type definition is, that the newly created type
 is not added to the type table, otherwise the following code would be a valid c0 program:
 \begin{codeblock}
-    int a;
-    bool b;
-    char c;
-    int main() {
-        $gm k;
-...
-k.b = true;
-return k.a
+int a;
+bool b;
+char c;
+int main() {
+    $gm k;
+    ...
+    k.b = true;
+    return k.a
 }
 \end{codeblock}
 Therefore, we're employing the modified function for adding the struct types:
+\newpage
 \begin{codeblock}
 ...
 structType := structBuilder.setName(bw(Na)).setSize(displacement).setComps(strComps).build()
@@ -680,7 +685,6 @@ node[style A] (tydn) {FuDn} edge from parent[draw=none]
 \label{fig:fillFT}
 \end{figure}
 
-\newpage
 As in the previous parts, type is verified to be either primitive or defined previously. Upon success, return
 type is stored:
 \begin{codeblock}
@@ -814,9 +818,11 @@ as outlined below:
 \end{itemize}
 Therefore, a register is assigned for the expression node, it is released either when the statement is completed, or after
 the binary operation if the respective pebble, associated with one of the operands, is removed from the node, i.e. is not
-storing the result of the operation. Given that, one concludes the first variant of the pebble game implementation:
-\subsubsection{Pebble Game Naive Approach}
-Key idea is to employ a straightforward pointer to the first available register, occupying the register is followed by the increment of the pointer,
+storing the result of the operation. Given that, we're choosing an approach different from the pebble game. The main idea is
+to keep track of the occupied registers, release the single register corresponding to the binary operation's right operand, after the operation's finished,
+and release every register after each statement.
+\subsubsection{Keeping the track of the occupied registers with a single pointer}
+Key idea is to employ a straightforward pointer to the first available register, occupying the register entails increasing the pointer,
 releasing triggers the decrement.
 \begin{codeblock}
 int registerPointer := 1; // first free register
@@ -833,12 +839,15 @@ releaseReg() {
 \end{codeblock}
 Although this implementation satisfies the current grammar, the naive approach does not work for the extended grammar
 with inline assembly portions:
-\begin{codeblock}
-gpr(j) = e { J };
-e = gpr(j) { J };
-// J is the set of registers that are restricted to change
+\begin{codeblock}[Inline assembly]
+gpr(j) = e { 4, 6 };
+e = gpr(j) { 2, 7 };
+// Here, e is an expression
 \end{codeblock}
-Simple repeated incrementing will work while evaluating inline assembly statements, although releasing the
+
+The aforementioned listing is an example of the inline assembly statements of C0. The sets of numbers right after the assignments
+specify the registers which are restricted to be changed during the respective assignment. Although,
+simple repeated incrementing of the register pointer will work while evaluating inline assembly statements, although releasing the
 registers will result in a single decrement, leaving out a range of available registers out of scope.
 
 \subsubsection{Pebble Game With Boolean Arrays}
@@ -857,7 +866,7 @@ registers[reg - 1] = true; // releasing the register
 \subsection{Configuration Class}
 It is important to keep track of the current function (for variable binding). For debugging, it's also helpful to
 store the recursion depth and the displacement of each call. We define a record for this purpose
-\begin{codeblock}[Function call]
+\begin{codeblock}[Function call. Java implementation on \href{https://github.com/fyfsb/dcfg/blob/main/src/main/java/config/FunctionCall.java}{Github}]
 class FunctionCall {
     Fun function;
     int rd;
@@ -865,7 +874,7 @@ class FunctionCall {
 }
 \end{codeblock}
 We're combining the function call stack and pebble game logic into Configuration class.
-\begin{codeblock}
+\begin{codeblock}[Configuration class. Java implementation on \href{https://github.com/fyfsb/dcfg/blob/main/src/main/java/config/Configuration.java}{Github}]
 class Configuration {
     boolean[] registers; // for pebble game
     Stack<FunctionCall> stack;
@@ -876,19 +885,22 @@ class Configuration {
     void freeRegister(int reg) { ... }
 }
 \end{codeblock}
-\newpage
+
 \subsection{VarReg}
 Considering the tree structure of the program, it is convenient to employ recursive traversal algorithms in the code generation.
 Moreover, by itself, code generation entails only adding the handler functions for the respective tree patterns. However, this
 approach needs to be integrated with the current implementation of the pebble game and it's vital
-to keep track of the registers of the corresponding values. For that purpose, we add one more model:
-\begin{codeblock}[VarReg]
+to keep track of the registers of the corresponding values. For that purpose, we add one more class:
+\begin{codeblock}[VarReg class. Java implementation on \href{https://github.com/fyfsb/dcfg/blob/main/src/main/java/model/VarReg.java}{Github}]
 class VarReg {
     Variable var;
     int reg;
     VarType type;
 }
 \end{codeblock}
+The \verb+VarReg+ class is the main data structure for generating the assembly instructions.
+It stores the reference to the variable, for \verb+<id>+ bindings, type for ensuring the type safety and the register
+assigned from the pebble game and used in the assembly instruction.
 \verb+Variable+ and \verb+VarType+ are separated. When dealing with \verb+<id>+ bindings, the respective variable is
 extracted from the struct and \verb+type = var.type+. Other case is handling constants, for that the respective
 type is set
@@ -897,15 +909,16 @@ type is set
 \item \verb+<C>+ - \verb+INT+ or \verb+UINT+
 \item \verb+<BC>+ - \verb+BOOL+
 \end{itemize}
-and the variable attribute is set to \verb+null+.
-\newpage
+and the variable attribute is set to \verb+null+. You can find the usages of the \verb+VarReg+ class
+described in the Section \ref{sec:code_gen}
+
 \section{Code Generation}\label{sec:code_gen}
-In this section, we introduce the classes responsible for the code generation, and describe the handler
+In this section, using the data structures defined so far, we introduce the classes responsible for the code generation, and describe the handler
 functions for each pattern. For simplicity, classes are grouped by the context and purpose. Having almost all
 methods static, these classes encapsulate nothing except the generated instruction list. We have
 \subsection{ConstEvaluator}
 This class generates instructions for \verb+<C>+, \verb+<BC>+ and \verb+<CC>+:
-\begin{codeblock}[Constant Evaluator]
+\begin{codeblock}[Constant Evaluator. Java implementation on \href{https://github.com/fyfsb/dcfg/blob/main/src/main/java/codegen/ConstantEvaluator.java}{Github}]
 class ConstEvaluator {
     evaluateNumberConstant(DTE c) -> VarReg {
         assert c is <C>
@@ -947,7 +960,7 @@ class ConstEvaluator {
 \subsection{Expression Evaluator}
 Generates instructions for arithmetic and boolean expressions, i.e. \verb+<E>+ and \verb+<BE>+.
 Implementation is described later in the section.
-\begin{codeblock}[ExpressionEvaluator]
+\begin{codeblock}[ExpressionEvaluator. Java implementation on \href{https://github.com/fyfsb/dcfg/blob/main/src/main/java/codegen/ExpressionEvaluator.java}{Github}]
 class ExpressionEvaluator {
     // input <E>
     evaluateArithmeticExpression(DTE e) -> VarReg { ... }
@@ -966,8 +979,8 @@ class ExpressionEvaluator {
 \subsection{Id Evaluator}
 Binds and evaluates the variables (\verb+<id>+). The method \verb+evaluateId+ gets passed the \verb+<id>+ token,
 whereas \verb+bindVariableName+ binds the \verb+bw(Na)+ to the respective memory struct, and generates the code for
-calculating the base address of the variable.
-\begin{codeblock}[IdEvaluator]
+calculating the base address of the variable. The detailed review of the implementation can be found in the Section 2.5.7.
+\begin{codeblock}[IdEvaluator. Java implementation on \href{https://github.com/fyfsb/dcfg/blob/main/src/main/java/codegen/IdEvaluator.java}{Github}]
 class IdEvaluator {
     evaluateId(DTE id) -> VarReg { ... }
     bindVariableName(DTE na) -> VarReg { ... }
@@ -975,18 +988,17 @@ class IdEvaluator {
 \end{codeblock}
 \subsection{Memory Helper}
 Contains the logic for increasing/decreasing stack and heap pointers. This class is used in the allocations and function calls.
-\begin{codeblock}[MemoryHelper]
+\begin{codeblock}[MemoryHelper. Java implementation on \href{https://github.com/fyfsb/dcfg/blob/main/src/main/java/codegen/MemoryHelper.java}{Github}]
 class MemoryHelper {
     increaseHeapPointer(int size) { ... }
     increaseStackPointer(int size) { ... }
 }
 \end{codeblock}
-\newpage
 \subsection{Code Generator}
 Gets passed the initial program, encapsulates the generated instructions, delegates tree patterns to other
 evaluator classes. Directly manages function calls, conditional and loop statements.
 
-\begin{codeblock}[Code Generator]
+\begin{codeblock}[Code Generator. Java implementation on \href{https://github.com/fyfsb/dcfg/blob/main/src/main/java/codegen/CodeGenerator.java}{Github}]
 class CodeGenerator {
     generateCodeForFunctionCall(FunctionCall call) {
         function := call.function
@@ -1020,6 +1032,7 @@ class CodeGenerator {
     ...
 }
 \end{codeblock}
+\newpage
 As can be seen in \verb+CodeGenerator+, starting the compilation process entails creating a function call for
 \verb+main+ function and forwarding it to \verb+CodeGenerator.generateCodeForFunctionCall+ method:
 \begin{codeblock}
@@ -1130,7 +1143,7 @@ is bound by the call of \verb+bindVariable+ from class \verb+IdEvaluator+.
 
 \begin{figure}[h]
 \centering
-\begin{codeblock}[evaluateId]
+\begin{codeblock}[evaluateId. Java implementation on \href{https://github.com/fyfsb/dcfg/blob/main/src/main/java/codegen/IdEvaluator.java}{Github}]
 input: DTE id, bool lv (checks if additional dereference is required)
 output: VarReg result - bound identificator
 
@@ -1159,7 +1172,7 @@ and the register storing the base address of the array is increased by the stand
 \item \verb+<id>&+: As mentioned above, only name is bound, no additional instructions get added.
 \end{itemize}
 
-\begin{codeblock}[bindVariable]
+\begin{codeblock}[bindVariable. Java implementation on \href{https://github.com/fyfsb/dcfg/blob/main/src/main/java/codegen/IdEvaluator.java}{Github}]
 input: DTE id
 output: VarReg result
 
@@ -1193,7 +1206,7 @@ bindVariable(DTE id) -> VarReg {
 To bind the name, we first access the current function, from the \verb+Configuration+ class. Local variable
 is then checked in the function's struct. If found, name is then bound locally, otherwise, the variable is searched
 in the global memory's struct.
-\begin{codeblock}[bindName]
+\begin{codeblock}[bindName. Java implementation on \href{https://github.com/fyfsb/dcfg/blob/main/src/main/java/codegen/IdEvaluator.java}{Github}]
 input: DTE na - name tree element
 output: VarReg res - bound variable
 
@@ -1221,7 +1234,7 @@ bindName(DTE na) -> VarReg {
 
 For the assigned value, we differentiate among arithmetic and boolean expressions, character constants,
 heap allocations and function calls. Any other pattern is considered a grammar error.
-\begin{codeblock}[getValue]
+\begin{codeblock}[getValue. Java implementation on \href{https://github.com/fyfsb/dcfg/blob/main/src/main/java/codegen/CodeGenerator.java}{Github}]
 input: DTE x - tree element representing assigned value
 output: VarReg varRegValue - bound value
 
@@ -1247,7 +1260,7 @@ evaluated recursively, and the value inside the register is negated.
 \item \verb+<E>+ has 1 child: If \verb+<T>+ or \verb+<F>+ appear, we continue traversing the children, case of the
 identifier is handled by the aforementioned \verb+evaluateId+, arithmetic constants are parsed with \verb+ConstEvaluator+ class.
 \end{itemize}
-\begin{codeblock}[evaluateExpr]
+\begin{codeblock}[evaluateExpr. Java implementation on \href{https://github.com/fyfsb/dcfg/blob/main/src/main/java/codegen/ExpressionEvaluator.java}{Github}]
 input: DTE e - expression tree element
 output: VarReg res - bound value and register of the expression
 
@@ -1279,7 +1292,7 @@ evaluateExpr(DTE e) -> VarReg {
 Allocations entail storing the heap pointer's current value inside the register bound to the first identifier of
 the assignment statement, after which \verb+MemoryHelper+'s method for increasing the heap pointer is utilized. Size of
 the increase, is the size of the pointer's target type.
-\begin{codeblock}[evaluateAlloc]
+\begin{codeblock}[evaluateAlloc. Java implementation on \href{https://github.com/fyfsb/dcfg/blob/main/src/main/java/codegen/CodeGenerator.java}{Github}]
 input: DTE x - tree element deriving new <Na>*
 output: new heap entry gets allocated, heap pointer increased.
 
@@ -1294,7 +1307,7 @@ Next step is to initialize local variables, number of the memory words occupied 
 stack is filled with zeros. Result destination stack is initialized with the base address of the identifier.
 Jump and link instruction to the called function's label is added to the instruction list, after which the \verb+CodeGenerator+'s
 method \verb+generateCodeForFunctionCall+ is called.
-\begin{codeblock}[funCall]
+\begin{codeblock}[funCall. Java implementation on \href{https://github.com/fyfsb/dcfg/blob/main/src/main/java/codegen/CodeGenerator.java}{Github}]
 input: DTE x - tree element deriving <Na> (<PaS>) {...
 output: new function call gets created, stack pointer increased
 
@@ -1337,7 +1350,7 @@ Returned result is an expression, which is evaluated. Subsequently, the result i
 identifier in the assignment by dereferencing the \verb+rds+ pointer. Function then is ready either to
 return or to halt (if name="main"). In case of the former, stack pointer is decreased by the size of the function,
 return address is obtained and the jump performed.
-\begin{codeblock}[generateRSt]
+\begin{codeblock}[generateRSt. Java implementation on \href{https://github.com/fyfsb/dcfg/blob/main/src/main/java/codegen/CodeGenerator.java}{Github}]
 generateRSt(DTE rSt, FunctionCall call) {
 
     // RSt = return X, X = <E>|<BE>|<CC>
@@ -1498,3 +1511,359 @@ node[style A] (elsests) {StS} child {node[style A] (rcb1) {\}}}
 \draw[thick, ->] (sinstr) -- (sjump);
 \end{tikzpicture}
 \end{center}
+
+\section{Translated programs}
+In this section, we provide the translations of some programs written in c0 (Sample programs are copied from the system architecture book exercises on code generation \cite{sysbook}).
+Listed programs are in c0 syntax, with the applied pre-processing (spaces and tabulations trimmed, dedicated `EOF` symbol appended),
+whereas the compiled versions have jumps and links to the function label instead of the relative address, untranslated macros, the syscalls
+used implicitly (e.g. HALT) and the comments for readability. With this in account, we delegate the complete translation of the program to the assembler.\\~\\
+First example shows the program with assignments and conditional statements:
+\begin{codeblock}
+int x;
+int main(){
+x = 3;
+x = x + 1;
+if x>0 {x = 1} else {x = 2};
+return 0
+}~
+\end{codeblock}
+With it's respective translation:
+\begin{codeblock}
+_main:
+addi $1 $28 0
+addi $2 $2 3
+sw $2 $1 0
+addi $1 $28 0
+addi $2 $28 0
+lw $2 $2 0
+addi $3 $3 1
+add $2 $2 $3
+sw $2 $1 0
+addi $1 $28 0
+lw $1 $1 0
+addi $2 $2 0
+sgt 1 1 2
+beqz 1 4
+addi $2 $28 0
+addi $3 $3 1
+sw $3 $2 0
+addi $1 $1 0
+HALT
+\end{codeblock}
+
+The program with a loop:
+\begin{codeblock}
+int n;
+int res;
+int main(){
+n = 32768;
+res = 0;
+while n>0 {
+res = res + n;
+n = n - 1
+};
+return 0
+}~
+\end{codeblock}
+Translated version:
+\begin{codeblock}
+_main:
+addi $1 $28 0
+addi $2 $2 32768
+sw $2 $1 0
+addi $1 $28 4
+addi $2 $2 0
+sw $2 $1 0
+addi $1 $28 0
+lw $1 $1 0
+addi $2 $2 0
+sgt 1 1 2
+beqz 1 15
+addi $2 $28 4
+addi $3 $28 4
+lw $3 $3 0
+addi $4 $28 0
+lw $4 $4 0
+add $3 $3 $4
+sw $3 $2 0
+addi $1 $28 0
+addi $2 $28 0
+lw $2 $2 0
+addi $3 $3 1
+sub $2 $2 $3
+sw $2 $1 0
+blez 0 -18
+addi $1 $1 0
+HALT
+\end{codeblock}
+The program calculating the nth Fibonacci number:
+\begin{codeblock}
+int x;
+
+int fib(int n){
+int res;
+int first;
+int second;
+
+if n<2 {res = n} else {
+first = fib(n - 2);
+second = fib(n - 1);
+res = first + second
+};
+
+return res
+};
+
+int main(){
+x=fib(31);
+return 0
+}~
+\end{codeblock}
+Translated version:
+\begin{codeblock}
+_main:
+addi $1 $28 0
+addi $2 $29 16 # start of increasing spt
+subi $2 $2 32
+blez 2 4
+macro: gpr(1) = x
+sysc
+addi $29 $29 20 # end of increasing spt
+add $2 $29 $-12
+addi $3 $0 12
+macro: zero($2, $3)
+jal _fib
+addi $1 $1 0
+HALT
+
+_fib:
+addi $2 $0 -20
+sw $31 $2 0
+addi $2 $29 -16
+lw $2 $2 0
+addi $3 $3 2
+slt $2 $2 $3
+beqz 2 6
+addi $3 $29 -12
+addi $4 $29 -16
+lw $4 $4 0
+sw $4 $3 0
+beq 0 30
+addi $2 $29 -8
+addi $3 $29 16 # start of increasing spt
+subi $3 $3 32
+blez 3 4
+macro: gpr(1) = x
+sysc
+addi $29 $29 20 # end of increasing spt
+add $3 $29 $-12
+addi $4 $0 12
+macro: zero($3, $4)
+jal _fib
+addi $3 $29 -4
+addi $4 $29 16 # start of increasing spt
+subi $4 $4 32
+blez 4 4
+macro: gpr(1) = x
+sysc
+addi $29 $29 20 # end of increasing spt
+add $4 $29 $-12
+addi $5 $0 12
+macro: zero($4, $5)
+jal _fib
+addi $4 $29 -12
+addi $5 $29 -8
+lw $5 $5 0
+addi $6 $29 -4
+lw $6 $6 0
+add $5 $5 $6
+sw $5 $4 0
+addi $4 $29 -12
+lw $4 $4 0
+sw $4 $1 0 # start of return from fib
+lw $1 $29 -20
+addi $29 $29 -20
+jr 1 # end of return from fib
+\end{codeblock}
+\newpage
+The program calculating powers, using the defined struct:
+\begin{codeblock}
+typedef struct {int exp; int val} powst;
+int x;
+
+int main(){
+x=pow(2, 2);
+return x
+};
+
+int pow(int base, int n){
+powst p;
+p = new powst*;
+p.exp = 0;
+p.val = 1;
+while p.exp<n {
+p.exp = p.exp + 1;
+p.val = p.val*base
+};
+return p.val
+}~
+\end{codeblock}
+Translation:
+\begin{codeblock}
+_main:
+addi $1 $28 0
+addi $2 $29 16 # start of increasing spt
+subi $2 $2 32
+blez 2 4
+macro: gpr(1) = x
+sysc
+addi $29 $29 20 # end of increasing spt
+addi $2 $2 2
+sw $2 $29 -16
+addi $2 $2 2
+sw $2 $29 -12
+add $2 $29 $-8
+addi $3 $0 8
+macro: zero($2, $3)
+jal _pow
+addi $1 $28 0
+lw $1 $1 0
+HALT
+
+_pow:
+addi $2 $0 -20
+sw $31 $2 0
+addi $2 $29 -8
+sw $30 $2 0
+# INCREASING HEAP POINTER
+addi $30 $30 8 # start of increasing hpt
+subi $1 $30 31
+bltz 1 4
+macro: gpr(1) = x
+sysc
+addi $1 $30 -8
+addi $2 $0 2
+zero(1, 2) # end of increasing hpt
+addi $2 $29 -8
+addi $2 $2 0
+addi $3 $3 0
+sw $3 $2 0
+addi $2 $29 -8
+addi $2 $2 4
+addi $3 $3 1
+sw $3 $2 0
+addi $2 $29 -8
+addi $2 $2 0
+lw $2 $2 0
+addi $3 $29 -12
+lw $3 $3 0
+slt $2 $2 $3
+beqz 2 19
+addi $3 $29 -8
+addi $3 $3 0
+addi $4 $29 -8
+addi $4 $4 0
+lw $4 $4 0
+addi $5 $5 1
+add $4 $4 $5
+sw $4 $3 0
+addi $2 $29 -8
+addi $2 $2 4
+addi $3 $29 -8
+addi $3 $3 4
+lw $3 $3 0
+addi $4 $29 -16
+lw $4 $4 0
+macro: mul($3, $3, $4)
+sw $3 $2 0
+blez 0 -24
+addi $2 $29 -8
+addi $2 $2 4
+lw $2 $2 0
+sw $2 $1 0 # start of return from pow
+lw $1 $29 -20
+addi $29 $29 -20
+jr 1 # end of return from pow
+\end{codeblock}
+\newpage
+Linked lists:
+\begin{codeblock}
+typedef LEL* u;
+typedef struct {int content; u next} LEL;
+u first;
+u last;
+int n;
+int main(){
+n = 200;
+first = new LEL*;
+last = first;
+n = n -1;
+while n>0 {
+last*.next = new LEL*;
+last = last*.next;
+n = n - 1
+};
+return 0
+}~
+\end{codeblock}
+Translation:
+\begin{codeblock}
+_main:
+addi $1 $28 8
+addi $2 $2 200
+sw $2 $1 0
+addi $1 $28 0
+sw $30 $1 0
+# INCREASING HEAP POINTER
+addi $30 $30 4 # start of increasing hpt
+subi $1 $30 31
+bltz 1 4
+macro: gpr(1) = x
+sysc
+addi $1 $30 -4
+addi $2 $0 1
+zero(1, 2) # end of increasing hpt
+addi $1 $28 4
+addi $2 $28 0
+lw $2 $2 0
+sw $2 $1 0
+addi $1 $28 8
+addi $2 $28 8
+lw $2 $2 0
+addi $3 $3 1
+sub $2 $2 $3
+sw $2 $1 0
+addi $1 $28 8
+lw $1 $1 0
+addi $2 $2 0
+sgt 1 1 2
+beqz 1 27
+addi $2 $28 4
+lw $2 $2 0
+addi $2 $2 4
+sw $30 $2 0
+# INCREASING HEAP POINTER
+addi $30 $30 4 # start of increasing hpt
+subi $1 $30 31
+bltz 1 4
+macro: gpr(1) = x
+sysc
+addi $1 $30 -4
+addi $2 $0 1
+zero(1, 2) # end of increasing hpt
+addi $1 $28 4
+addi $2 $28 4
+lw $2 $2 0
+addi $2 $2 4
+lw $2 $2 0
+sw $2 $1 0
+addi $1 $28 8
+addi $2 $28 8
+lw $2 $2 0
+addi $3 $3 1
+sub $2 $2 $3
+sw $2 $1 0
+blez 0 -30
+addi $1 $1 0
+HALT
+\end{codeblock}
