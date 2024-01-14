@@ -7,6 +7,7 @@ with helper methods (defined in the system architecture book).
 Section~\ref{sec:using-new-tools-for-filling-the-symbol-tables} focuses on integrating the Sethi-Ulman algorithm,
 creating the debugging tools and the context utilities (current function getter, function call initializer etc).
 Finally, in Section~\ref{sec:code_gen} we describe the whole process of the code generation from the given derivation tree.
+In Section~\ref{sec:translated_programs} we provide example programs with the translated versions.
 
 
 \section{Symbol Table Data Structures}\label{sec:symbol_table_models}
@@ -633,7 +634,7 @@ variable declaration sequence \textbf{almost} as a type definition of form:
 typedef struct { VaDS } $gm;
 \end{codeblock}
 Single difference from a regular type definition is, that the newly created type
-is not added to the type table, otherwise the following code would be a valid c0 program:
+is not added to the type table, otherwise the following code would be a valid C0 program:
 \begin{codeblock}
 int a;
 bool b;
@@ -1512,8 +1513,8 @@ node[style A] (elsests) {StS} child {node[style A] (rcb1) {\}}}
 \end{tikzpicture}
 \end{center}
 
-\section{Translated programs}
-In this section, we provide the translations of some programs written in c0 (Sample programs are copied from the system architecture book exercises on code generation \cite{sysbook}).
+\section{Translated programs}\label{sec:translated_programs}
+In this section, we provide the translations of some programs written in C0 (Sample programs are copied from the system architecture book exercises on code generation \cite{sysbook}).
 Listed programs are in c0 syntax, with the applied pre-processing (spaces and tabulations trimmed, dedicated `EOF` symbol appended),
 whereas the compiled versions have jumps and links to the function label instead of the relative address, untranslated macros, the syscalls
 used implicitly (e.g. HALT) and the comments for readability. With this in account, we delegate the complete translation of the program to the assembler.\\~\\
