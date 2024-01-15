@@ -176,7 +176,7 @@ The preceding section of the thesis introduced an efficient structure for storin
 
 We provide the input grammar by passing two file paths as parameters to the \(\boldsymbol{Grammar.constructor}\):
 \begin{itemize}
-    \item  \texttt{Grammar.txt}: \textit{Contains the entire CFG (C0 in our case. Exactly the same representation as in Figure 1.0).}
+    \item  \texttt{Grammar.txt}: \textit{Contains the entire CFG (C0 in our case. Exactly the same representation as in \hyperref[fig:grammar_c0]{Figure 1.1}).}
     \item  \texttt{Terminals.txt}: \textit{Lists all terminal symbols. Notably, unlike nonterminal symbols, not all terminal symbols can be identified from \texttt{Grammar.txt} alone, Therefore, it’s essential to explicitly define all terminal symbols.}
 \end{itemize}
 
@@ -319,7 +319,7 @@ Here is the formal construction of the \( K_{1}\) automaton from the book \cite{
 \begin{figure}[h!]
     \includegraphics[width=\linewidth]{DK1 formal specification.png}
     \caption{formal construction of \(K_{1}\) automaton from book \cite{sipser}, Part 1, chapter 2.4.}
-    \label{2}
+    \label{figure 2}
 \end{figure}
 
 \vspace{15pt}
@@ -332,7 +332,7 @@ In \( DK_{1} \) automaton, a state encapsulates \(items\) (also referred to as \
 \begin{figure}[h!]
     \includegraphics[width=\linewidth]{DK1 example.png}
     \caption{Example of \(DK_{1}\) Automaton. Image from book \cite{sipser}, part 1, chapter 2.4.}
-    \label{3}
+    \label{figure 3}
 \end{figure}
 
 Based on the \( DK_{1} \) automaton specification from "Introduction to the Theory of Computation”, and the definition of finite deterministic automaton we aim to replicate the \( DK_{1} \) automaton's structure to align our implementation with the mathematical theory developed by Michael Sipser \cite{sipser}.\\
@@ -477,7 +477,7 @@ All the methods mentioned below are quite complex from the implementation point 
 % DK1 Automaton Builder for a CFG
 \section{\(\boldsymbol{DK_{1}}\) Automaton Builder for a CFG}\label{sec:DK1 Automaton Builder for a CFG}
 
-We have built a solid framework to construct the \(DK_{1}\) automaton of a particular CFG. \(DK_{1}\) is a deterministic finite automaton that will help us to test the input grammar and then parse the source code. The implementation will closely follow the theory developed in the "Introduction to the Theory of Computation" \cite{sipser}. Note that the implementation process is intricate. For instance, while the example of the \(DK_{1}\) automaton for a basic grammar in Figure 1.1 has only 9 states with a few items, the \(DK_{1}\) of the C0 grammar comprises 3264 states with a vast number of items. Even a small error in the implementation can drastically alter the automaton.
+We have built a solid framework to construct the \(DK_{1}\) automaton of a particular CFG. \(DK_{1}\) is a deterministic finite automaton that will help us to test the input grammar and then parse the source code. The implementation will closely follow the theory developed in the "Introduction to the Theory of Computation" \cite{sipser}. Note that the implementation process is intricate. For instance, while the example of the \(DK_{1}\) automaton for a basic grammar in \hyperref[figure 3]{Figure 2.2} has only 9 states with a few items, the \(DK_{1}\) of the C0 grammar comprises 3264 states with a vast number of items. Even a small error in the implementation can drastically alter the automaton.
 
 \vspace{10pt}
 
@@ -649,7 +649,7 @@ The book \cite{sipser}, part 1, chapter 2.4, Parsing and LR(K) Grammars, provide
 \begin{figure}[h!]
     \includegraphics[width=\linewidth]{DK1 test conditions.png}
     \caption{\(DK_{1}\) test specification from book \cite{sipser}, part 1, chapter 2.4.}
-    \label{4}
+    \label{figure 4}
 \end{figure}
 
 
@@ -706,7 +706,7 @@ If all the states pass these checks, then the \(DK_{1}\) Test is deemed successf
 % Analysis and Corrections of C0 Grammar based on DK1 Test
 \section{Analysis and Corrections of C0 Grammar based on \(\boldsymbol{DK_{1}}\) Test}\label{sec:Analysis and Corrections of C0 Grammar based on DK1 Test}
 
-Regrettably, the initial C0 grammar (as shown in Figure 1.0) doesn’t pass the \(DK1\) Test without a few production rule adjustments.\\
+Regrettably, the initial C0 grammar (as shown in \hyperref[fig:grammar_c0]{Figure 1.1}) doesn’t pass the \(DK1\) Test without a few production rule adjustments.\\
 
 The essential causes of failure are:
 
@@ -1019,7 +1019,7 @@ In order to find the handle for the given valid string we should traverse the \(
 \begin{figure}[h!]
     \includegraphics[width=\linewidth]{Identify Handle.png}
     \caption{Corollary 2.51 from book \cite{sipser}, part 1, chapter 2.4.}
-    \label{4}
+    \label{figure 5}
 \end{figure}
 
 \vspace{10pt}
@@ -1227,5 +1227,5 @@ The shortest functional C0 code:
 \begin{figure}[h!]
     \includegraphics[width=\linewidth]{parseTree.png}
     \caption{the parse tree of the shortest functional C0 code.}
-    \label{5}
+    \label{figure 6}
 \end{figure}
