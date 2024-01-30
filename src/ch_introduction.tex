@@ -5,7 +5,7 @@
 This thesis introduces an entire compiler development for languages derived from LR(1) grammars. It involves:
 
 \begin{itemize}
-    \item Lexical analysis of both the source code and the input context-free grammar(CFG).
+    \item Lexical analysis of the source code based on the input context-free grammar (CFG).
     \item Testing whether the input CFG is indeed LR(1).
     \item The source code pre-processing.
     \item Syntactic analysis, where the parser examines the refined token sequence to decode its hierarchical structure. The outcome is the parse tree, representing the complete hierarchical structure of the source code as per the input programming language's grammar.
@@ -41,6 +41,6 @@ The entire implementation in Java is accessible on \href{https://github.com/fyfs
 \begin{figure}[h!]
     \center
     \includegraphics[width=13cm]{C0.png}
-    \caption{C0 Context-Free Grammar}
+    \caption{C0 Context-Free Grammar from \cite{sysbook}}
     \label{fig:grammar_c0}
 \end{figure}
