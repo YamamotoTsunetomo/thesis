@@ -11,7 +11,7 @@ In Section~\ref{sec:translated_programs} we provide example programs with the tr
 
 
 \section{Symbol Table Data Structures}\label{sec:symbol_table_models}
-In this section, we provide definitions of the data structures the for symbol tables, specifically the type table, variable table, and function table.\
+In this section, we turn the mathematical definitions from the system architecture book~\cite{sysbook}, Section 11.2 into data structures for the symbol tables, specifically the type table, variable table, and function table.\
 These tables are essential for accessing pertinent program data prior to code generation.
 Example usages include retrieving function parameters by name, searching for struct components, ensuring type safety, calculating displacements etc.
 The implementation of the data structures can be found in packages \verb+model+ and \verb+table+.
@@ -808,8 +808,8 @@ not only manages the stack of function calls, but also provides access to the cu
 logic, including acquiring free registers and releasing them when needed. Finally, we introduce new record \verb+VarReg+, which is
 simply a data class containing the variable, type and the register. Later on, storing the register inside a record enables
 dividing the code generation parts by context and allows working with repeating patterns recursively.
-\subsection{Integrating Pebble Game}
-Referencing the Sethi-Ulman algorithm described in the book, we align the pebble game moves with the state of registers in the statement,
+\subsection{Register Distribution}
+Referencing the Sethi-Ulman algorithm described in the system architecture book \cite{sysbook}, Section 12.2.1, we align the pebble game moves with the state of registers in the statement,
 as outlined below:
 \begin{itemize}
     \item A register is considered occupied when a pebble is placed on a corresponding node.
@@ -819,8 +819,10 @@ as outlined below:
 \end{itemize}
 Therefore, a register is assigned for the expression node, it is released either when the statement is completed, or after
 the binary operation if the respective pebble, associated with one of the operands, is removed from the node, i.e. is not
-storing the result of the operation. Given that, we're choosing an approach different from the pebble game. The main idea is
-to keep track of the occupied registers, release the single register corresponding to the binary operation's right operand, after the operation's finished,
+storing the result of the operation. Given that, we're choosing an approach different from the pebble game, by which evaluation of
+the expressions by the induction over the trees (quoting \cite{sysbook} Section 12.2.1) is preserved (detailed description of code generation
+of the expressions can be found in Section \ref{subsec:generating_assignments}). However, register states are
+maintained globally by a dedicated class. The main idea is to keep track of the occupied registers, release the single register corresponding to the binary operation's right operand, after the operation's finished,
 and release every register after each statement.
 \subsubsection{Keeping the track of the occupied registers with a single pointer}
 Key idea is to employ a straightforward pointer to the first available register, occupying the register entails increasing the pointer,
@@ -851,11 +853,12 @@ specify the registers which are restricted to be changed during the respective a
 simple repeated incrementing of the register pointer will work while evaluating inline assembly statements, although releasing the
 registers will result in a single decrement, leaving out a range of available registers out of scope.
 
-\subsubsection{Pebble Game With Boolean Arrays}
+\subsubsection{Distributing Registers With Boolean Arrays}
 Workaround is to use a boolean array, with each item indicating the availability of the register
 with the respective index. Getting the register becomes an operation of getting first one and setting zero,
 releasing - setting one. This approach works for inline assembly portions as well, since it suffices to make
 each register from set \verb+J+ unavailable during the statement.
+\newpage
 \begin{codeblock}[Pebble game]
 registers = new boolean[MAX_AVAILABLE];
 ...
@@ -915,8 +918,10 @@ described in the Section \ref{sec:code_gen}
 
 \section{Code Generation}\label{sec:code_gen}
 In this section, using the data structures defined so far, we introduce the classes responsible for the code generation, and describe the handler
-functions for each pattern. For simplicity, classes are grouped by the context and purpose. Having almost all
-methods static, these classes encapsulate nothing except the generated instruction list. We have
+functions for each pattern. For simplicity, classes are grouped by the context and purpose. Here, we refer to these structures as
+\verb+Evaluator/Helper+ classes. Having almost all methods static, these classes encapsulate nothing except the generated instruction list.
+Evaluators' methods are the direct adaptations of the program translation rules described in the system architecture book
+\cite{sysbook}, Sections 12.2-12.4. We have
 \subsection{ConstEvaluator}
 This class generates instructions for \verb+<C>+, \verb+<BC>+ and \verb+<CC>+:
 \begin{codeblock}[Constant Evaluator. Java implementation on \href{https://github.com/fyfsb/dcfg/blob/main/src/main/java/codegen/ConstantEvaluator.java}{Github}]
@@ -980,7 +985,10 @@ class ExpressionEvaluator {
 \subsection{Id Evaluator}
 Binds and evaluates the variables (\verb+<id>+). The method \verb+evaluateId+ gets passed the \verb+<id>+ token,
 whereas \verb+bindVariableName+ binds the \verb+bw(Na)+ to the respective memory struct, and generates the code for
-calculating the base address of the variable. The detailed review of the implementation can be found in the Section 2.5.7.
+calculating the base address of the variable. Depending on the R-label (system architecture book \cite{sysbook}, Section 12.2.2),
+\verb+evaluateId+ returns the left or right value of the expressions (which differ by the single dereference). Here, we utilize
+the \verb+lv: bool+ (left value) parameter satisfying $lv = \neg R$. The detailed review of the implementation can be found in the Section \ref{subsec:generating_assignments}.
+\newpage
 \begin{codeblock}[IdEvaluator. Java implementation on \href{https://github.com/fyfsb/dcfg/blob/main/src/main/java/codegen/IdEvaluator.java}{Github}]
 class IdEvaluator {
     evaluateId(DTE id) -> VarReg { ... }
@@ -1033,7 +1041,6 @@ class CodeGenerator {
     ...
 }
 \end{codeblock}
-\newpage
 As can be seen in \verb+CodeGenerator+, starting the compilation process entails creating a function call for
 \verb+main+ function and forwarding it to \verb+CodeGenerator.generateCodeForFunctionCall+ method:
 \begin{codeblock}
@@ -1098,7 +1105,7 @@ child {node[style B] (conditional) {generateConditional}}}
 \label{fig:st_types}
 \end{figure}
 \newpage
-\subsection{Generating Assignments}
+\subsection{Generating Assignments}\label{subsec:generating_assignments}
 As illustrated in Figure~\ref{fig:gen_assignment}, the evaluation of an identifier involves storing the left value of the corresponding variable inside a register,
 returned within the \verb_VarReg_ record instance \verb+verRegId+.
 On the other hand, the assigned value (\verb+X+) is also evaluated, and its right value is stored in the register associated with \verb+varRegValue+.
