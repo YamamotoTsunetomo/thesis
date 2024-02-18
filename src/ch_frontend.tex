@@ -261,16 +261,19 @@ For instance, tokenizing the string \(\boldsymbol{str}\) = \texttt{"int main()\{
 \begin{enumerate}
     \item \(\boldsymbol{resultArray}\) = \texttt{[]}; \hfill \(\boldsymbol{str}\) = \texttt{"int main()\{return 0\}\( \dashv \)"}
     \item \(\boldsymbol{resultArray}\) = \texttt{[int]}; \hfill \(\boldsymbol{str}\) = \texttt{" main()\{return 0\}\( \dashv \)"}
-    \item \(\boldsymbol{resultArray}\) = \texttt{[int,  ,]}; \hfill \(\boldsymbol{str}\) = \texttt{"main()\{return 0\}\( \dashv \)"}
-    \item \(\boldsymbol{resultArray}\) = \texttt{[int,  , main]}; \hfill \(\boldsymbol{str}\) = \texttt{"()\{return 0\}\( \dashv \)"}
-    \item \(\boldsymbol{resultArray}\) = \texttt{[int,  , main, (]}; \hfill \(\boldsymbol{str}\) = \texttt{")\{return 0\}\( \dashv \)"}
-    \item \(\boldsymbol{resultArray}\) = \texttt{[int,  , main, (, )]}; \hfill \(\boldsymbol{str}\) = \texttt{"\{return 0\}\( \dashv \)"}
-    \item \(\boldsymbol{resultArray}\) = \texttt{[int,  , main, (, ), \{]}; \hfill \(\boldsymbol{str}\) = \texttt{"return 0\}\( \dashv \)"}
-    \item \(\boldsymbol{resultArray}\) = \texttt{[int,  , main, (, ), \{, return]}; \hfill \(\boldsymbol{str}\) = \texttt{" 0\}\( \dashv \)"}
-    \item \(\boldsymbol{resultArray}\) = \texttt{[int,  , main, (, ), \{, return,  ]}; \hfill \(\boldsymbol{str}\) = \texttt{"0\}\( \dashv \)"}
-    \item \(\boldsymbol{resultArray}\) = \texttt{[int,  , main, (, ), \{, return,  , 0]}; \hfill \(\boldsymbol{str}\) = \texttt{"\}\( \dashv \)"}
-    \item \(\boldsymbol{resultArray}\) = \texttt{[int,  , main, (, ), \{, return,  , 0, \}]}; \hfill \(\boldsymbol{str}\) = \texttt{"\( \dashv \)"}
-    \item \(\boldsymbol{resultArray}\) = \texttt{[int,  , main, (, ), \{, return,  , 0, \}, \( \dashv \)]}; \hfill \(\boldsymbol{str}\) = \texttt{""}
+    \item \(\boldsymbol{resultArray}\) = \texttt{[int,  ]}; \hfill \(\boldsymbol{str}\) = \texttt{"main()\{return 0\}\( \dashv \)"}
+    \item \(\boldsymbol{resultArray}\) = \texttt{[int,  , m]}; \hfill \(\boldsymbol{str}\) = \texttt{"ain()\{return 0\}\( \dashv \)"}
+    \item \(\boldsymbol{resultArray}\) = \texttt{[int,  , m, a]}; \hfill \(\boldsymbol{str}\) = \texttt{"in()\{return 0\}\( \dashv \)"}
+    \item \(\boldsymbol{resultArray}\) = \texttt{[int,  , m, a, i]}; \hfill \(\boldsymbol{str}\) = \texttt{"n()\{return 0\}\( \dashv \)"}
+    \item \(\boldsymbol{resultArray}\) = \texttt{[int,  , m, a, i, n]}; \hfill \(\boldsymbol{str}\) = \texttt{"()\{return 0\}\( \dashv \)"}
+    \item \(\boldsymbol{resultArray}\) = \texttt{[int,  , m, a, i, n, (]}; \hfill \(\boldsymbol{str}\) = \texttt{")\{return 0\}\( \dashv \)"}
+    \item \(\boldsymbol{resultArray}\) = \texttt{[int,  , m, a, i, n, (, )]}; \hfill \(\boldsymbol{str}\) = \texttt{"\{return 0\}\( \dashv \)"}
+    \item \(\boldsymbol{resultArray}\) = \texttt{[int,  , m, a, i, n, (, ), \{]}; \hfill \(\boldsymbol{str}\) = \texttt{"return 0\}\( \dashv \)"}
+    \item \(\boldsymbol{resultArray}\) = \texttt{[int,  , m, a, i, n, (, ), \{, return]}; \hfill \(\boldsymbol{str}\) = \texttt{" 0\}\( \dashv \)"}
+    \item \(\boldsymbol{resultArray}\) = \texttt{[int,  , m, a, i, n, (, ), \{, return,  ]}; \hfill \(\boldsymbol{str}\) = \texttt{"0\}\( \dashv \)"}
+    \item \(\boldsymbol{resultArray}\) = \texttt{[int,  , m, a, i, n, (, ), \{, return,  , 0]}; \hfill \(\boldsymbol{str}\) = \texttt{"\}\( \dashv \)"}
+    \item \(\boldsymbol{resultArray}\) = \texttt{[int,  , m, a, i, n, (, ), \{, return,  , 0, \}]}; \hfill \(\boldsymbol{str}\) = \texttt{"\( \dashv \)"}
+    \item \(\boldsymbol{resultArray}\) = \texttt{[int,  , m, a, i, n, (, ), \{, return,  , 0, \}, \( \dashv \)]}; \hfill \(\boldsymbol{str}\) = \texttt{""}
 \end{enumerate}
 
 The Symbol \( \dashv \) represents the \(\boldsymbol{endmark}\) symbol, introduced in Michael Sipser's book. The Java implementation of the \(\boldsymbol{stringIntoSymbolsArray}\) method on \href{https://github.com/fyfsb/dcfg/blob/main/src/main/java/grammar/Grammar.java}{GitHub/Grammar}.
@@ -1149,80 +1152,80 @@ Presenting the experimental data of the parser is very lengthy. Thus, we will ex
 
 The shortest functional C0 code:
 \begin{codeblock}
-int main(){return 0}~
+    int main(){return 0}~
 \end{codeblock}
 
 \begin{codeblock}
 [int,  , m, a, i, n, (, ), {, return,  , 0, }, ~]
-handle: <Ty> -> [int]
+    handle: <Ty> -> [int]
 
-[<Ty>,  , m, a, i, n, (, ), {, return,  , 0, }, ~]
-handle: <Le> -> [m]
+    [<Ty>,  , m, a, i, n, (, ), {, return,  , 0, }, ~]
+    handle: <Le> -> [m]
 
-[<Ty>,  , <Le>, a, i, n, (, ), {, return,  , 0, }, ~]
-handle: <Le> -> [a]
+    [<Ty>,  , <Le>, a, i, n, (, ), {, return,  , 0, }, ~]
+    handle: <Le> -> [a]
 
-[<Ty>,  , <Le>, <Le>, i, n, (, ), {, return,  , 0, }, ~]
-handle: <DiLe> -> [<Le>]
+    [<Ty>,  , <Le>, <Le>, i, n, (, ), {, return,  , 0, }, ~]
+    handle: <DiLe> -> [<Le>]
 
-[<Ty>,  , <Le>, <DiLe>, i, n, (, ), {, return,  , 0, }, ~]
-handle: <Le> -> [i]
+    [<Ty>,  , <Le>, <DiLe>, i, n, (, ), {, return,  , 0, }, ~]
+    handle: <Le> -> [i]
 
-[<Ty>,  , <Le>, <DiLe>, <Le>, n, (, ), {, return,  , 0, }, ~]
-handle: <DiLe> -> [<Le>]
+    [<Ty>,  , <Le>, <DiLe>, <Le>, n, (, ), {, return,  , 0, }, ~]
+    handle: <DiLe> -> [<Le>]
 
-[<Ty>,  , <Le>, <DiLe>, <DiLe>, n, (, ), {, return,  , 0, }, ~]
-handle: <Le> -> [n]
+    [<Ty>,  , <Le>, <DiLe>, <DiLe>, n, (, ), {, return,  , 0, }, ~]
+    handle: <Le> -> [n]
 
-[<Ty>,  , <Le>, <DiLe>, <DiLe>, <Le>, (, ), {, return,  , 0, }, ~]
-handle: <DiLe> -> [<Le>]
+    [<Ty>,  , <Le>, <DiLe>, <DiLe>, <Le>, (, ), {, return,  , 0, }, ~]
+    handle: <DiLe> -> [<Le>]
 
-[<Ty>,  , <Le>, <DiLe>, <DiLe>, <DiLe>, (, ), {, return,  , 0, }, ~]
-handle: <DiLeS> -> [<DiLe>]
+    [<Ty>,  , <Le>, <DiLe>, <DiLe>, <DiLe>, (, ), {, return,  , 0, }, ~]
+    handle: <DiLeS> -> [<DiLe>]
 
-[<Ty>,  , <Le>, <DiLe>, <DiLe>, <DiLeS>, (, ), {, return,  , 0, }, ~]
-handle: <DiLeS> -> [<DiLe>, <DiLeS>]
+    [<Ty>,  , <Le>, <DiLe>, <DiLe>, <DiLeS>, (, ), {, return,  , 0, }, ~]
+    handle: <DiLeS> -> [<DiLe>, <DiLeS>]
 
-[<Ty>,  , <Le>, <DiLe>, <DiLeS>, (, ), {, return,  , 0, }, ~]
-handle: <DiLeS> -> [<DiLe>, <DiLeS>]
+    [<Ty>,  , <Le>, <DiLe>, <DiLeS>, (, ), {, return,  , 0, }, ~]
+    handle: <DiLeS> -> [<DiLe>, <DiLeS>]
 
-[<Ty>,  , <Le>, <DiLeS>, (, ), {, return,  , 0, }, ~]
-handle: <Na> -> [<Le>, <DiLeS>]
+    [<Ty>,  , <Le>, <DiLeS>, (, ), {, return,  , 0, }, ~]
+    handle: <Na> -> [<Le>, <DiLeS>]
 
-[<Ty>,  , <Na>, (, ), {, return,  , 0, }, ~]
-handle: <Di> -> [0]
+    [<Ty>,  , <Na>, (, ), {, return,  , 0, }, ~]
+    handle: <Di> -> [0]
 
-[<Ty>,  , <Na>, (, ), {, return,  , <Di>, }, ~]
-handle: <DiS> -> [<Di>]
+    [<Ty>,  , <Na>, (, ), {, return,  , <Di>, }, ~]
+    handle: <DiS> -> [<Di>]
 
-[<Ty>,  , <Na>, (, ), {, return,  , <DiS>, }, ~]
-handle: <C> -> [<DiS>]
+    [<Ty>,  , <Na>, (, ), {, return,  , <DiS>, }, ~]
+    handle: <C> -> [<DiS>]
 
-[<Ty>,  , <Na>, (, ), {, return,  , <C>, }, ~]
-handle: <F> -> [<C>]
+    [<Ty>,  , <Na>, (, ), {, return,  , <C>, }, ~]
+    handle: <F> -> [<C>]
 
-[<Ty>,  , <Na>, (, ), {, return,  , <F>, }, ~]
-handle: <T> -> [<F>]
+    [<Ty>,  , <Na>, (, ), {, return,  , <F>, }, ~]
+    handle: <T> -> [<F>]
 
-[<Ty>,  , <Na>, (, ), {, return,  , <T>, }, ~]
-handle: <E> -> [<T>]
+    [<Ty>,  , <Na>, (, ), {, return,  , <T>, }, ~]
+    handle: <E> -> [<T>]
 
-[<Ty>,  , <Na>, (, ), {, return,  , <E>, }, ~]
-handle: <rSt> -> [return,  , <E>]
+    [<Ty>,  , <Na>, (, ), {, return,  , <E>, }, ~]
+    handle: <rSt> -> [return,  , <E>]
 
-[<Ty>,  , <Na>, (, ), {, <rSt>, }, ~]
-handle: <body> -> [<rSt>]
+    [<Ty>,  , <Na>, (, ), {, <rSt>, }, ~]
+    handle: <body> -> [<rSt>]
 
-[<Ty>,  , <Na>, (, ), {, <body>, }, ~]
-handle: <FuD> -> [<Ty>,  , <Na>, (, ), {, <body>, }]
+    [<Ty>,  , <Na>, (, ), {, <body>, }, ~]
+    handle: <FuD> -> [<Ty>,  , <Na>, (, ), {, <body>, }]
 
-[<FuD>, ~]
-handle: <FuDS> -> [<FuD>]
+    [<FuD>, ~]
+    handle: <FuDS> -> [<FuD>]
 
-[<FuDS>, ~]
-handle: <prog> -> [<FuDS>, ~]
+    [<FuDS>, ~]
+    handle: <prog> -> [<FuDS>, ~]
 
-[<prog>]
+    [<prog>]
 \end{codeblock}
 
 % ----- Image: parse tree
