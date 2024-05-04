@@ -819,7 +819,7 @@ This method offers programmers some flexibility when using whitespaces. Further 
 % Distinguish multiplication and pointer dereferencing
 \subsection{Distinguish multiplication and pointer dereferencing}
 
-In the updated C0 grammar we use \(\textquotesingle\) instead of \(\ast\) when dereferencing a pointer. By distinguishing between these two cases in the pre-processing phase, we can allow programmers to use \(\ast\) for pointer dereferencing, even though the grammar uses \(\textquotesingle\). Once we identify the asterisks used for pointer dereferencing, we'll replace them with \(\textquotesingle\) before the parsing process starts.\\
+In the updated C0 grammar, we use \(\textquotesingle\) instead of \(\ast\) when dereferencing a pointer. By distinguishing these two cases in the pre-processing phase, we enable programmers to use \(\ast\) for pointer dereferencing, even though the grammar utilizes \(\textquotesingle\). Once we identify the asterisks used for pointer dereferencing, we will replace them with \(\textquotesingle\) before the parsing process begins. \\
 
 To differentiate between multiplication and pointer dereferencing, we need to observe the immediate symbol to the right of the \(\ast\).
 
@@ -828,7 +828,7 @@ To differentiate between multiplication and pointer dereferencing, we need to ob
     <T> → <T>*<F>
 \end{verbatim}
 
-To differentiate between the two, we'll compare the potential first terminals of \texttt{<F>} and those that can stand immediately to the right of \texttt{<id>}.\\
+To distinguish between the two, we will compare the potential first terminals of \texttt{<F>} and those that can stand immediately to the right of \texttt{<id>}. \\
 
 The first terminal of \texttt{<F>} can be:
 \begin{center}
@@ -850,15 +850,15 @@ The first terminal standing to the right of \texttt{<id>} can be:
     \end{tabular}
 \end{center}
 
-Notably, the minus symbol is the obly overlapping element between the two lists. However, it represents a unary operation in the first context and a binary one in the second. Therefore, to correctly identify the pointer dereference symbol, we must differentiate between the unary and binary minus operations within the C0 grammar.\\
+Notably, the minus symbol is the only overlapping element between the two lists. However, it represents a unary operation in the first context and a binary one in the second. Therefore, to correctly identify the pointer dereference symbol, we must differentiate between the unary and binary minus operations within the C0 grammar. \\
 
-To do so, we should observe what can be on the left of the \(-\) symbol.\\
+To do so, we should observe what can be on the left of the \(-\) symbol. \\
 
 On the left of Binary \(-\) can be:
 \begin{center}
     \begin{tabular}{|c|c|c|c|c|c|c|}
         \hline
-        \( ) \) & \( <C> \) & \( <Na> \) & \( ] \) & \( ' \) & \( \& \)\\
+        \( * \) & \( <C> \) & \( <Na> \) & \( ] \) & \( ) \) & \( \& \)\\
         \hline
     \end{tabular}
 \end{center}
@@ -872,9 +872,16 @@ On the left of Unary \(-\) can be:
     \end{tabular}
 \end{center}
 
-Thus we know how to differentiate between binary and unary minus. Consequently, we also know how to distinguish between multiplication and pointer dereferencing.\\
+As we see, the \( * \) symbol is common for both unary and binary minuses. This raises a concern that in the original C0 grammar, unary and binary minuses might not be distinguishable. Here is an example that proves this concern to be true:
 
-During the pre-processing phase, when encountering \(\ast\), we'll inspect the subsequent symbol. If it is a letter, unary minus, an opening bracket, or a digit, we'll replace it with \(\textquotesingle\). Otherwise, we leave it as it is.
+\[a*-b\]
+
+Here, \( * \) could be the multiplication or the pointer dereferencing operator, and correspondingly, \( - \) could be unary or binary. We cannot distinguish these two cases.
+
+\[(a*)-b\]
+\[a*(-b)\]
+
+This might explain why C/C++ has the pointer dereferencing asterisk on the left-hand side \(*a\). Unfortunately, we cannot use the pre-processor to distinguish between multiplication and pointer dereferencing in the original C0 grammar. Instead, we use a different symbol \(\textquotesingle\) for pointer dereference.
 
 \vspace{30pt}
 
