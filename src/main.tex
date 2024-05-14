@@ -100,8 +100,37 @@
 % Document
 \begin{document}
     \maketitle
-
     \tableofcontents
+
+    \begin{abstract}
+        \begin{itemize}
+            \item This thesis doesn't aim to contribute to the standard compiler technology.
+            The compiler produces assembly instructions for the ISA described in~\cite{sysbook}, thus no
+            intermediate language/virtual machine is used.
+            The project omits the step of code optimization.
+            Standard building technology can be found in `Dragon book`~\cite{dragon} by Aho/Ullman, or in
+            series of textbooks by Helmut Seidl~\cite{hsvm,hsaat,hssasa}.
+            \item Every component of the project was constructed from scratch using Java and Java standard libraries.
+            Authors acknowledge, that in the real world applications, one might prefer to use the existing parser generators,
+            e.g.\ ANTLR\@.
+            One of the objectives of the project was to argue about language C0 described in~\cite{sysbook} having LR(1) properties
+            and performing DK test.
+            As an outcome, grammar from~\cite{sysbook} has been changed several times to pass the DK test.
+            Our implementation of the parser generator is based on the DK automaton described in~\cite{sipser} and it
+            creates the parser in runtime.
+            It's justified by the need to change the grammar. One could easily provide an extension of the project,
+            where the code for the automata is also generated.
+            \item The thesis provides compressed lecture series with examples on building a working compiler for a
+            practically useful programming language.
+            Prerequisites for building/understanding the C0 compiler are:
+            \begin{itemize}
+                \item Single chapter on automata/DK from~\cite{sipser}
+                \item Notes about code generation from~\cite{sysbook}
+            \end{itemize}
+        \end{itemize}
+    \end{abstract}
+
+
     \include{ch_introduction}
     \include{ch_frontend}
     \include{ch_backend}
@@ -116,5 +145,17 @@
         \bibitem{DFA}
         "NFA and DFA Equivalence Theorem Proof, Conversion Algorithm and Example"
         by Neural Dump. \href{https://neuraldump.net/2017/11/nfa-and-dfa-equivalence-theorem-proof-and-example/}{Link}
+
+        \bibitem{hsvm}
+        Reinhard Wilhelm, Helmut Seidl (2010) Compiler Design: Virtual Machines
+
+        \bibitem{hsaat}
+        Helmut Seidl, Reinhard Wilhelm, Sebastian Hack (2012) Compiler design: analysis and transformation
+
+        \bibitem{hssasa}
+        Reinhard Wilhelm, Helmut Seidl, Sebastian Hack (2013) Compiler Design: Syntactic and Semantic Analysis
+
+        \bibitem{dragon}
+        Alfred V. Aho, Monica S. Lam, Ravi Sethi, Jeffrey D. Ullman - (Dragon Book) Compilers Principle Techniques and Tools
     \end{thebibliography}
 \end{document}
