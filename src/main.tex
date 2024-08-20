@@ -4,8 +4,9 @@
 % Preamble
 \documentclass[11pt]{report}
 
-\title{Compiler Development for LR(1) Grammars: \(DK_{1}\) Test, Parsing, and Code Generation with Application to the \(C0\) Language\\ \vspace{10pt}{\Large Kutaisi International University}}
-\author{Irakli Khotchava\\Toma Pirtskhelani \vspace{30pt}\\ Supervisor:\\ Wolfgang J. Paul}
+\title{{\large Capstone project for the Bachelor’s degree at Kutaisi International University} \\ \vspace{50pt} Compiler Development for LR(1) Grammars: \(DK_{1}\) Test, Parsing, and Code Generation with Application to the \(C0\) Language}
+\author{Irakli Khotchava\\Toma Pirtskhelani \vspace{30pt}\\ Thesis advisor: Prof. Dr. Wolfgang Paul \\
+Second referee: Prof. Dr. Helmut Seidl}
 \date{}
 
 % Packages
@@ -102,7 +103,15 @@
     \maketitle
     \tableofcontents
 
+    \renewcommand{\abstractname}{Declaration}
+    \begin{abstract}
 
+        We declare that this thesis has been composed solely by ourselves and that it has not been submitted, in whole or in part, in any previous application for a degree. \\
+
+        Except where stated otherwise by reference or acknowledgment, the work presented is entirely our own.
+    \end{abstract}
+
+    \renewcommand{\abstractname}{Summary}
     \begin{abstract}
         \begin{itemize}
             \item This thesis does not aim to contribute to standard compiler technology. Instead, it focuses on producing assembly instructions for the ISA described in~\cite{sysbook}, without using an intermediate language or virtual machine. Code optimization steps are omitted, and standard building technology can be found in the "Dragon Book" by Aho and Ullman~\cite{dragon}, or in the series of textbooks by Helmut Seidl, Reinhard Wilhelm, and Sebastian Hack~\cite{hsvm,hsaat,hssasa}.
@@ -113,6 +122,13 @@
                 \item Notes about code generation from~\cite{sysbook}.
             \end{itemize}
         \end{itemize}
+
+        \vspace{10pt}
+
+        The authors thank Mirian Shilakadze for pointing out, that the original C0 grammar is ambiguous, because $x*-y$ can be parsed both as:
+        \begin{center}
+            $(x*)-_2y$ or $x*(-_1y)$
+        \end{center}
     \end{abstract}
 
     \include{ch_introduction}
